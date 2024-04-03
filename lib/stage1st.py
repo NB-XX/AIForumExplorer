@@ -3,6 +3,13 @@ import re
 import html
 import streamlit as st
 
+def convert_cookies(cookies_str):
+    cookies_dict = {}
+    for cookie in cookies_str.split('; '):
+        key, value = cookie.split('=', 1)
+        cookies_dict[key] = value
+    return cookies_dict
+
 def extract_json(data):
     extracted_posts = []
     
@@ -35,7 +42,8 @@ def extract_json(data):
 
 def download_json(url):
     try:
-        cookies = st.secrets["cookies"]
+        cookies_str = st.secrets["cookies"]
+        cookies = convert_cookies(cookies_str)
         response = requests.get(url, cookies=cookies)
         response.raise_for_status()  
         data = response.json()
