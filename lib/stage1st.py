@@ -1,6 +1,7 @@
 import requests
 import re
 import html
+import streamlit as st
 
 def extract_json(data):
     extracted_posts = []
@@ -34,7 +35,8 @@ def extract_json(data):
 
 def download_json(url):
     try:
-        response = requests.get(url)
+        cookies = st.secrets["cookies"]
+        response = requests.get(url, cookies=cookies)
         response.raise_for_status()  
         data = response.json()
     except requests.RequestException as e:
