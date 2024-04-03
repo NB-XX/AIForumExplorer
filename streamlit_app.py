@@ -37,9 +37,9 @@ def handle_url(url):
     
     st.write("未匹配到正确帖子链接.")
 
-st.title("帖子总结生成器")
-st.write("2024年4月3日更新：增加Stage1st登录cookies支持，现在可以爬取需要登录的帖子了！")
-url = st.text_input("请输入4Chan或Stage1st帖子链接:")
+st.title("TL;DR——你的生命很宝贵")
+st.write("2024年4月3日更新：增加Stage1st和NGA登录cookies支持，现在可以爬取需要登录的帖子了！")
+url = st.text_input(r"请输入4Chan\Stage1st\NGA帖子链接:")
 # 模型选择
 model_options = {
     "gemini-1.5-pro-latest": "Gemini 1.5 Pro (每分钟2次查询，每天1000次查询)",
