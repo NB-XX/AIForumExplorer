@@ -30,7 +30,7 @@ url = st.text_input("请输入4Chan或Stage1st帖子链接:")
 # 模型选择
 model_options = {
     "gemini-1.5-pro-latest": "Gemini 1.5 Pro (每分钟2次查询，每天1000次查询)",
-    "gemini-1.0-pro-latest": "Gemini 1.0 Pro (每分钟1次查询，每天500次查询)"
+    "gemini-1.0-pro-latest": "Gemini 1.0 Pro (每分钟1次查询，无每天查询限制)"
 }
 model_choice = st.selectbox(
     "请选择模型：",
