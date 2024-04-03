@@ -35,8 +35,8 @@ def download_and_extract_json(url):
         extracted_posts.append(extracted_post)
     return extracted_posts
 
-def four_chan_scrape(thread_id):
-    url = f"https://a.4cdn.org/vt/thread/{thread_id}.json"
+def four_chan_scrape(thread_id,board):
+    url = f"https://a.4cdn.org/{board}/thread/{thread_id}.json"
     extracted_data = download_and_extract_json(url)
     
     extracted_content = ""

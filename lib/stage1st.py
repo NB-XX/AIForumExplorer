@@ -42,7 +42,7 @@ def extract_json(data):
 
 def download_json(url):
     try:
-        cookies_str = st.secrets["cookies"]
+        cookies_str = st.secrets["s1cookies"]
         cookies = convert_cookies(cookies_str)
         response = requests.get(url, cookies=cookies)
         response.raise_for_status()  
