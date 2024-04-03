@@ -15,13 +15,12 @@ def fetch_post_info(tid,cookies):
     base_url = "https://ngabbs.com/app_api.php?__lib=post&__act=list"
     headers = {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Cookie': cookies
     }
     data = {
         'page': 1, 
         'tid': tid,
     }
-    response = requests.post(base_url, headers=headers, data=data)
+    response = requests.post(base_url, headers=headers, data=data, cookies=cookies)
     if response.status_code == 200:
         json_data = response.json()
         total_pages = json_data['totalPage']
@@ -33,7 +32,6 @@ def fetch_posts(tid, total_pages,cookies):
     base_url = "https://ngabbs.com/app_api.php?__lib=post&__act=list"
     headers = {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Cookie': cookies
     }
     posts = []
 
@@ -42,7 +40,7 @@ def fetch_posts(tid, total_pages,cookies):
             'page': page,
             'tid': tid,
         }
-        response = requests.post(base_url, headers=headers, data=data)
+        response = requests.post(base_url, headers=headers, data=data, cookies=cookies)
         if response.status_code == 200:
             posts.extend(response.json()['result'])
 
