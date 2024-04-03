@@ -10,7 +10,8 @@ def handle_url(url):
     match_4chan = re.match(r'https?://boards\.4chan\.org/\w+/thread/(\d+)', url)
     if match_4chan:
         thread_id = match_4chan.group(1)
-        st.write(f"Detected 4chan thread ID: {thread_id}")
+        placeholder = st.empty()  # 创建一个空的占位符
+        placeholder.text("已识别到4chan帖子 thread ID: {thread_id}")  # 显示临时消息
         # 调用four_chan_scrape函数
         return four_chan_scrape(thread_id)
 
@@ -18,15 +19,16 @@ def handle_url(url):
     match_s1 = re.match(r'https?://bbs\.saraba1st\.com/2b/thread-(\d+)-\d+-\d+\.html', url)
     if match_s1:
         thread_id = match_s1.group(1)
-        st.write(f"Detected Stage1st thread ID: {thread_id}")
+        placeholder = st.empty()  # 创建一个空的占位符
+        placeholder.text("已识别到Stage1st帖子 thread ID: {thread_id}")  # 显示临时消息
         # 调用S1_scraper函数
         return S1_scraper(thread_id)
 
-    st.write("URL does not match known patterns.")
+    st.write("未匹配到正确帖子链接.")
 
 st.title("帖子总结生成器")
 url = st.text_input("请输入4Chan或Stage1st帖子链接:")
-
+st.write("2024年4月3日更新：增加Stage1st登录cookies支持，现在可以爬取需要登录的帖子了！")
 # 模型选择
 model_options = {
     "gemini-1.5-pro-latest": "Gemini 1.5 Pro (每分钟2次查询，每天1000次查询)",
@@ -38,12 +40,11 @@ model_choice = st.selectbox(
     format_func=lambda x: f"{x} ({model_options[x]})"  # 显示选项和描述
 )
 
-if st.button("确认选择"):
+if st.button("切换模型"):
     st.success(f"切换模型成功: {model_choice}")
 
 if url:
     extracted_content = handle_url(url)
-
     if extracted_content and model_choice:
         # 在模型生成结果之前显示临时消息
         placeholder = st.empty()  # 创建一个空的占位符
