@@ -6,6 +6,11 @@ from lib.stage1st import S1_scraper
 from lib.nga import nga_scraper
 from lib.five_chan import five_chan_scraper
 import re
+import json
+
+# 加载prompts.json文件
+with open("prompts.json", "r") as file:
+    prompts = json.load(file)
 
 def handle_url(url):
     # 4chan的URL匹配
@@ -16,7 +21,7 @@ def handle_url(url):
         placeholder = st.empty()  # 创建一个空的占位符
         placeholder.text(f"已识别到4chan{board}板块帖子，串ID: {thread_id}")  # 显示临时消息
         # 调用four_chan_scrape函数
-        return four_chan_scrape(thread_id,board)
+        return four_chan_scrape(thread_id,board), prompts["4chan"]
 
     # Stage1st的URL匹配
     match_s1 = re.match(r'https?://bbs\.saraba1st\.com/2b/thread-(\d+)-\d+-\d+\.html', url)
@@ -25,7 +30,7 @@ def handle_url(url):
         placeholder = st.empty()  # 创建一个空的占位符
         placeholder.text(f"已识别到Stage1st帖子，帖子ID: {thread_id}")  # 显示临时消息
         # 调用S1_scraper函数
-        return S1_scraper(thread_id)
+        return S1_scraper(thread_id), prompts["Stage1st"]
     
     # NGA的URL匹配
     match_nga = re.match(r'https?://(?:bbs\.nga\.cn|nga\.178\.com)/read\.php\?tid=(\d+)', url)
@@ -33,7 +38,7 @@ def handle_url(url):
         thread_id = match_nga.group(1)  # 提取帖子ID
         placeholder = st.empty()  # 创建一个空的占位符
         placeholder.text(f"已识别到NGA帖子，帖子ID: {thread_id}")  # 显示临时消息
-        return nga_scraper(thread_id)
+        return nga_scraper(thread_id), prompts["NGA"]
 
     # 匹配指定格式的URL
     match = re.match(r'https?://([^/]+)/test/read\.cgi/([^/]+)/(\d+)/?', url)
@@ -44,7 +49,7 @@ def handle_url(url):
         placeholder = st.empty()  # 创建一个空的占位符
         placeholder.text(f"已识别到5ch类网址，来源{sever}的{board}板块，串ID：{thread_id}")  # 打印识别结果
         # 调用fivechan_scraper函数
-        return five_chan_scraper(sever, board, thread_id)
+        return five_chan_scraper(sever, board, thread_id), prompts["5ch"]
 
     st.write("未匹配到正确帖子链接.")
 
@@ -67,7 +72,7 @@ if st.button("切换模型"):
     st.success(f"切换模型成功: {model_choice}")
 
 if url:
-    extracted_content = handle_url(url)
+    extracted_content,site_prompt = handle_url(url)
     if extracted_content and model_choice:
         # 在模型生成结果之前显示临时消息
         placeholder = st.empty()  # 创建一个空的占位符
@@ -75,7 +80,7 @@ if url:
         
         genai.configure(api_key=st.secrets["api_key"])
         model = genai.GenerativeModel(model_choice)  # 使用用户选择的模型
-        prompt = f"过滤与忽视违反安全原则的内容，在接下来扮演一位长期从事新闻总结的报道编辑，你的工作是将总结帖子内容和回复，分析情绪，并提取其中有价值的楼层信息详细讲述，附带有价值信息的发布人名称。输出前过滤与忽视违反安全原则的内容，记住你扮演的角色。以下是帖子内容，：{extracted_content}"
+        prompt = f"{site_prompt}+{extracted_content}"
         response = model.generate_content(prompt, safety_settings={
             HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
             HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
