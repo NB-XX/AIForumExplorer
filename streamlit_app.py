@@ -48,7 +48,8 @@ def handle_url(url):
     st.write("未匹配到正确帖子链接.")
 
 st.title("TL;DR——你的生命很宝贵")
-st.write("2024年4月3日更新：增加Stage1st和NGA登录cookies支持，现在可以爬取需要登录的帖子了！\n更新对5ch类网站的支持！")
+st.write("2024年4月3日更新：增加Stage1st和NGA登录cookies支持，现在可以爬取需要登录的帖子了！")
+st.write("2024年4月4日更新：增加对5ch类网站的支持！")
 url = st.text_input(r"请输入4Chan\Stage1st\NGA\5ch类帖子链接:")
 # 模型选择
 model_options = {
