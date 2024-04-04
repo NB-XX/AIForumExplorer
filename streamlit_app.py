@@ -41,7 +41,8 @@ def handle_url(url):
         sever = match.group(1)
         board = match.group(2)
         thread_id = match.group(3)
-        print(f"已识别到5ch类网址，来源{sever}的{board}板块，串ID：{thread_id}")  # 打印识别结果
+        placeholder = st.empty()  # 创建一个空的占位符
+        placeholder.text(f"已识别到5ch类网址，来源{sever}的{board}板块，串ID：{thread_id}")  # 打印识别结果
         # 调用fivechan_scraper函数
         return five_chan_scraper(sever, board, thread_id)
 
