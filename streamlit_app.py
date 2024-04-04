@@ -4,6 +4,7 @@ from google.generativeai.types import HarmCategory, HarmBlockThreshold
 from lib.four_chan import four_chan_scrape
 from lib.stage1st import S1_scraper
 from lib.nga import nga_scraper
+from lib.five_chan import five_chan_scraper
 import re
 
 def handle_url(url):
@@ -13,7 +14,7 @@ def handle_url(url):
         board  = match_4chan.group(1)
         thread_id = match_4chan.group(2)
         placeholder = st.empty()  # 创建一个空的占位符
-        placeholder.text(f"已识别到4chan{board}板块帖子，thread ID: {thread_id}")  # 显示临时消息
+        placeholder.text(f"已识别到4chan{board}板块帖子，串ID: {thread_id}")  # 显示临时消息
         # 调用four_chan_scrape函数
         return four_chan_scrape(thread_id,board)
 
@@ -22,7 +23,7 @@ def handle_url(url):
     if match_s1:
         thread_id = match_s1.group(1)
         placeholder = st.empty()  # 创建一个空的占位符
-        placeholder.text(f"已识别到Stage1st帖子 thread ID: {thread_id}")  # 显示临时消息
+        placeholder.text(f"已识别到Stage1st帖子，帖子ID: {thread_id}")  # 显示临时消息
         # 调用S1_scraper函数
         return S1_scraper(thread_id)
     
@@ -31,15 +32,24 @@ def handle_url(url):
     if match_nga:
         thread_id = match_nga.group(1)  # 提取帖子ID
         placeholder = st.empty()  # 创建一个空的占位符
-        placeholder.text(f"已识别到NGA帖子 thread ID: {thread_id}")  # 显示临时消息
+        placeholder.text(f"已识别到NGA帖子，帖子ID: {thread_id}")  # 显示临时消息
         return nga_scraper(thread_id)
 
-    
+    # 匹配指定格式的URL
+    match = re.match(r'https?://([^/]+)/test/read\.cgi/([^/]+)/(\d+)/?', url)
+    if match:
+        sever = match.group(1)
+        board = match.group(2)
+        thread_id = match.group(3)
+        print(f"已识别到5ch类网址，来源{sever}的{board}板块，串ID：{thread_id}")  # 打印识别结果
+        # 调用fivechan_scraper函数
+        return five_chan_scraper(sever, board, thread_id)
+
     st.write("未匹配到正确帖子链接.")
 
 st.title("TL;DR——你的生命很宝贵")
-st.write("2024年4月3日更新：增加Stage1st和NGA登录cookies支持，现在可以爬取需要登录的帖子了！")
-url = st.text_input(r"请输入4Chan\Stage1st\NGA帖子链接:")
+st.write("2024年4月3日更新：增加Stage1st和NGA登录cookies支持，现在可以爬取需要登录的帖子了！\n更新对5ch类网站的支持！")
+url = st.text_input(r"请输入4Chan\Stage1st\NGA\5ch类帖子链接:")
 # 模型选择
 model_options = {
     "gemini-1.5-pro-latest": "Gemini 1.5 Pro (每分钟2次查询，每天1000次查询)",
