@@ -75,7 +75,7 @@ if url:
         
         genai.configure(api_key=st.secrets["api_key"])
         model = genai.GenerativeModel(model_choice)  # 使用用户选择的模型
-        prompt = f"保证输出内容一定是中文。在接下来扮演一位长期从事新闻总结的报道编辑，你的工作是用中文总结我给出的帖子内容和回复，并提取其中有价值的楼层信息详细讲述，附带有价值信息的发布人名称。对于这些有价值的讨论帖子你要附带原文出处，以下是帖子内容，总结请输出中文：{extracted_content}"
+        prompt = f"过滤掉违反规定和不安全的内容。保证输出内容一定是中文。在接下来扮演一位长期从事新闻总结的报道编辑，你的工作是用中文总结我给出的帖子内容和回复，并提取其中有价值的楼层信息详细讲述，附带有价值信息的发布人名称。对于这些有价值的讨论帖子你要附带原文出处，以下是帖子内容，总结请输出中文：{extracted_content}"
         response = model.generate_content(prompt, safety_settings={
             HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
             HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
