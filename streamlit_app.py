@@ -31,7 +31,7 @@ def generate_content_with_context(initial_prompt, model_choice, max_attempts=3):
         })
 
         if 'block_reason' in str(response.prompt_feedback):
-            st.write(f"被屏蔽{attempts + 1}次: 正常尝试重新输出")
+            st.write(f"被屏蔽{attempts + 1}次: 正常尝试重新输出。屏蔽原因：{response.prompt_feedback}")
             messages.append({'role': 'user', 'parts': ["继续生成"]})
             attempts += 1
         else:
@@ -40,7 +40,7 @@ def generate_content_with_context(initial_prompt, model_choice, max_attempts=3):
                     text_output = response.candidates[0].text  # 取第一个候选响应的文本
                     return text_output, False
                 else:
-                    return f"没有生成内容。{response.prompt_feedback}", True
+                    return f"没有生成内容。", True
             except AttributeError as e:
                 return f"响应解析失败：{e}", True
     return "被屏蔽太多次，完蛋了", True
