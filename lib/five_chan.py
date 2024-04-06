@@ -47,4 +47,4 @@ def five_chan_scraper(sever,board,thread_id):
     return extracted_content
 
 # 使用案例
-# print(fivechan_scraper('egg.5ch.net','streaming', '1669397246'))
+print(five_chan_scraper('bbs.jpnkn.com','hololiveneet', '1711709496'))
