@@ -42,8 +42,7 @@ def generate_content_with_context(initial_prompt, model_choice, max_attempts=3):
                 text_output = response.text
                 return text_output, False
             except ValueError as e:
-                st.error(f"获取内容失败：{e}")
-                return "获取内容失败。", True  
+                return f"获取内容失败:{e}", True  
     return "被屏蔽太多次，完蛋了", True
 
 
@@ -120,6 +119,8 @@ if url:
         prompt = f"{site_prompt}+{extracted_content}"
         response_text, blocked = generate_content_with_context(prompt, model_choice)
         placeholder.empty()  # 清除临时消息
+        if "获取内容失败" in response_text:
+            st.error(response_text)
         if not blocked:
             st.markdown(response_text)  # 显示模型生成的内容
         else:
