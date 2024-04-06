@@ -12,6 +12,34 @@ import json
 with open("prompts.json", "r") as file:
     prompts = json.load(file)
 
+# 屏蔽审查和多轮对话功能
+def is_content_blocked(prompt_feedback_str):
+    return "block_reason: SAFETY" in prompt_feedback_str
+
+def generate_content_with_context(initial_prompt, model_choice, max_attempts=3):
+    genai.configure(api_key=st.secrets["api_key"])
+    model = genai.GenerativeModel(model_choice)  # 使用用户选择的模型
+    attempts = 0
+    messages = [{'role': 'user', 'parts': [initial_prompt]}]
+
+    while attempts < max_attempts:
+        response = model.generate_content(messages, safety_settings={
+            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+        })
+        
+        prompt_feedback_str = str(response.prompt_feedback)
+        if is_content_blocked(prompt_feedback_str):
+            st.write(f"被屏蔽次数{attempts + 1}: 正常尝试重新输出")
+            # 尝试多次
+            messages.append({'role': 'user', 'parts': ["继续生成"]})
+            attempts += 1
+        else:
+            return response.text, False  
+    return "被屏蔽太多次，完蛋了", True
+
 def handle_url(url):
     # 4chan的URL匹配
     match_4chan = re.match(r'https?://boards\.4chan\.org/(\w+)/thread/(\d+)', url)
@@ -70,20 +98,33 @@ model_choice = st.selectbox(
 if st.button("切换模型"):
     st.success(f"切换模型成功: {model_choice}")
 
+if 'history' not in st.session_state:
+    st.session_state['history'] = []
+
 if url:
-    extracted_content,site_prompt = handle_url(url)
+    extracted_content, site_prompt = handle_url(url)
     if extracted_content and model_choice:
-        # 在模型生成结果之前显示临时消息
-        placeholder = st.empty()  # 创建一个空的占位符
-        placeholder.text("帖子已拉取完毕，正在等待模型生成...")  # 显示临时消息
-        genai.configure(api_key=st.secrets["api_key"])
-        model = genai.GenerativeModel(model_choice)  # 使用用户选择的模型
-        prompt = f"{site_prompt}+{extracted_content}"
-        response = model.generate_content(prompt,safety_settings={
-            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-        })
-        placeholder.empty()  # 清除临时消息
-        st.markdown(response.text)  # 显示模型生成的内容
+        if 'initial_prompt' not in st.session_state:
+            st.session_state['initial_prompt'] = f"{site_prompt}+{extracted_content}"
+        
+        # 在模型生成内容后显示用户的输入框
+        user_input = st.text_input("继续对话：", key="user_input")
+        
+        if st.button("提交", key="submit"):
+            # 更新历史记录
+            st.session_state['history'].append(user_input)
+            st.session_state['user_input'] = ""  # 清空输入框
+
+            # 生成新的prompt
+            new_prompt = st.session_state['initial_prompt'] + "\n\n".join(st.session_state['history'])
+            response_text, blocked = generate_content_with_context(new_prompt, model_choice)
+            
+            if not blocked:
+                st.markdown(response_text)
+            else:
+                st.write(response_text)
+
+        if st.session_state['history']:
+            # 如果历史记录不为空，则显示之前所有的对话和最后的生成内容
+            for i, text in enumerate(st.session_state['history']):
+                st.text_area(f"Round {i+1}:", value=text, height=75, key=f"round_{i}")
