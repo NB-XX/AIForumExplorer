@@ -111,7 +111,7 @@ if 'history' not in st.session_state:
 if url:
     extracted_content, site_prompt = handle_url(url)
     placeholder = st.empty()  
-    placeholder.text(f"帖子内容已拉去完毕")  
+    placeholder.text(f"帖子内容拉取完毕，等待生成中……")  
     if extracted_content and model_choice:
         if 'initial_prompt' not in st.session_state:
             st.session_state['initial_prompt'] = f"{site_prompt}+{extracted_content}"
