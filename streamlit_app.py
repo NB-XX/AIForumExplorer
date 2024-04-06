@@ -54,7 +54,7 @@ def handle_url(url):
     st.write("未匹配到正确帖子链接.")
 
 st.title("TL;DR——你的生命很宝贵")
-st.write("当前版本 v0.1.0 更新日期：2024年4月6日")
+st.write("当前版本 v0.1.0 更新日期：2024日4月6日")
 url = st.text_input(r"请输入4Chan\Stage1st\NGA\5ch类帖子链接:")
 # 模型选择
 model_options = {
@@ -71,7 +71,7 @@ if st.button("切换模型"):
     st.success(f"切换模型成功: {model_choice}")
 
 if url:
-    extracted_content, site_prompt = handle_url(url)
+    extracted_content,site_prompt = handle_url(url)
     if extracted_content and model_choice:
         # 在模型生成结果之前显示临时消息
         placeholder = st.empty()  # 创建一个空的占位符
@@ -79,18 +79,12 @@ if url:
         genai.configure(api_key=st.secrets["api_key"])
         model = genai.GenerativeModel(model_choice)  # 使用用户选择的模型
         prompt = f"{site_prompt}+{extracted_content}"
-        response = model.generate_content(prompt, stream=True, safety_settings={
+        response = model.generate_content(prompt,stream=True, safety_settings={
             HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
             HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
             HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
             HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
         })
         
-        # 清除临时消息
-        placeholder.empty()
-        
-        # 处理每个响应块
-        for chunk in response:
-            # 确保当前块有文本内容再进行显示
-            if chunk.text:
-                st.markdown(chunk.text)
+        placeholder.empty()  # 清除临时消息
+        st.markdown(response.text)  # 显示模型生成的内容
