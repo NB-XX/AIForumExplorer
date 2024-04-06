@@ -12,10 +12,6 @@ import json
 with open("prompts.json", "r") as file:
     prompts = json.load(file)
 
-# 屏蔽审查和多轮对话功能
-def is_content_blocked(prompt_feedback_str):
-    return "block_reason: SAFETY" in prompt_feedback_str
-
 def generate_content_with_context(initial_prompt, model_choice, max_attempts=3):
     genai.configure(api_key=st.secrets["api_key"])
     model = genai.GenerativeModel(model_choice)
@@ -31,18 +27,18 @@ def generate_content_with_context(initial_prompt, model_choice, max_attempts=3):
         })
 
         if 'block_reason' in str(response.prompt_feedback):
-            st.write(f"被屏蔽{attempts + 1}次: 正常尝试重新输出。屏蔽原因：{response.prompt_feedback}")
+            st.write(f"被屏蔽{attempts + 1}次: 正常尝试重新输出。{response.prompt_feedback}")
             messages.append({'role': 'user', 'parts': ["继续生成"]})
             attempts += 1
         else:
             try:
-                if response.candidates:  # 确认是否有候选响应
-                    text_output = response.candidates[0].text  # 取第一个候选响应的文本
-                    return text_output, False
+                if response.text:  # 直接检查响应文本是否存在
+                    return response.text, False
                 else:
-                    return f"没有生成内容。", True
+                    return "没有生成内容。", True
             except AttributeError as e:
                 return f"响应解析失败：{e}", True
+
     return "被屏蔽太多次，完蛋了", True
 
 
