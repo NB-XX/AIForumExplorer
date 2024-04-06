@@ -28,6 +28,7 @@ def generate_content_with_context(initial_prompt, model_choice, max_attempts=3):
 
         if 'block_reason' in str(response.prompt_feedback):
             st.write(f"被屏蔽{attempts + 1}次: 正常尝试重新输出。{response.prompt_feedback}")
+            messages.append({'role':'model','parts':["请指示我"]})
             messages.append({'role': 'user', 'parts': ["继续生成"]})
             attempts += 1
         else:
