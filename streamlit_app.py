@@ -82,8 +82,14 @@ def handle_url(url):
     st.write("未匹配到正确帖子链接.")
 
 st.title("TL;DR——你的生命很宝贵")
-st.write("当前版本 v0.1.0 更新日期：2024日4月6日")
-url = st.text_input(r"请输入4Chan\Stage1st\NGA\5ch类帖子链接:")
+st.write("当前版本 v0.1.1 更新日期：2024日4月6日")
+
+url = st.text_input("请输入4Chan\Stage1st\NGA\5ch类帖子链接:", key="url_input")
+
+# 设置触发按钮
+if st.button("开始分析"):
+    st.session_state['url'] = st.session_state['url_input']
+
 # 模型选择
 model_options = {
     "gemini-1.5-pro-latest": "Gemini 1.5 Pro (每分钟2次查询，每天1000次查询)",
@@ -94,6 +100,7 @@ model_choice = st.selectbox(
     options=list(model_options.keys()),
     format_func=lambda x: f"{x} ({model_options[x]})"  # 显示选项和描述
 )
+
 
 if st.button("切换模型"):
     st.success(f"切换模型成功: {model_choice}")
