@@ -79,12 +79,11 @@ if url:
         genai.configure(api_key=st.secrets["api_key"])
         model = genai.GenerativeModel(model_choice)  # 使用用户选择的模型
         prompt = f"{site_prompt}+{extracted_content}"
-        response = model.generate_content(prompt,stream=True, safety_settings={
+        response = model.generate_content(prompt,safety_settings={
             HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
             HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
             HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
             HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
         })
-        
         placeholder.empty()  # 清除临时消息
         st.markdown(response.text)  # 显示模型生成的内容
