@@ -30,15 +30,22 @@ def generate_content_with_context(initial_prompt, model_choice, max_attempts=3):
             HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
         })
         
-        prompt_feedback_str = str(response.prompt_feedback)
-        if is_content_blocked(prompt_feedback_str):
-            st.write(f"被屏蔽次数{attempts + 1}: 正常尝试重新输出")
+        # 检查响应是否被屏蔽
+        if 'block_reason: SAFETY' in str(response.prompt_feedback):
+            st.write(f"被屏蔽{attempts + 1}次: 正常尝试重新输出")
             # 尝试多次
             messages.append({'role': 'user', 'parts': ["继续生成"]})
             attempts += 1
         else:
-            return response.text, False  
+            # 确保有文本可以返回
+            try:
+                text_output = response.text
+                return text_output, False
+            except ValueError as e:
+                st.error(f"获取内容失败：{e}")
+                return "获取内容失败。", True  
     return "被屏蔽太多次，完蛋了", True
+
 
 def handle_url(url):
     # 4chan的URL匹配
