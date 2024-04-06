@@ -30,7 +30,7 @@ def generate_content_with_context(initial_prompt, model_choice, max_attempts=3):
             HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
         })
 
-        if 'block_reason: SAFETY' in str(response.prompt_feedback):
+        if 'block_reason' in str(response.prompt_feedback):
             st.write(f"被屏蔽{attempts + 1}次: 正常尝试重新输出")
             messages.append({'role': 'user', 'parts': ["继续生成"]})
             attempts += 1
@@ -40,9 +40,8 @@ def generate_content_with_context(initial_prompt, model_choice, max_attempts=3):
                     text_output = response.candidates[0].text  # 取第一个候选响应的文本
                     return text_output, False
                 else:
-                    return "没有生成内容。", True
+                    return f"没有生成内容。{response.prompt_feedback}", True
             except AttributeError as e:
-                # 如果响应对象没有.candidates属性，会捕获AttributeError
                 return f"响应解析失败：{e}", True
     return "被屏蔽太多次，完蛋了", True
 
@@ -55,9 +54,7 @@ def handle_url(url):
         thread_id = match_4chan.group(2)
         placeholder = st.empty()  # 创建一个空的占位符
         placeholder.text(f"已识别到4chan{board}板块帖子，串ID: {thread_id}")  # 显示临时消息
-        extracted_content = four_chan_scrape(thread_id, board)
-        placeholder.empty() 
-        return extracted_content, prompts["4chan"]
+        return four_chan_scrape(thread_id,board), prompts["4chan"]
 
     # Stage1st的URL匹配
     match_s1 = re.match(r'https?://bbs\.saraba1st\.com/2b/thread-(\d+)-\d+-\d+\.html', url)
@@ -65,9 +62,7 @@ def handle_url(url):
         thread_id = match_s1.group(1)
         placeholder = st.empty()  # 创建一个空的占位符
         placeholder.text(f"已识别到Stage1st帖子，帖子ID: {thread_id}")  # 显示临时消息
-        extracted_content = S1_scraper(thread_id)
-        placeholder.empty() 
-        return extracted_content, prompts["Stage1st"]
+        return S1_scraper(thread_id), prompts["Stage1st"]
     
     # NGA的URL匹配
     match_nga = re.match(r'https?://(?:bbs\.nga\.cn|nga\.178\.com)/read\.php\?tid=(\d+)', url)
@@ -75,9 +70,7 @@ def handle_url(url):
         thread_id = match_nga.group(1)  # 提取帖子ID
         placeholder = st.empty()  # 创建一个空的占位符
         placeholder.text(f"已识别到NGA帖子，帖子ID: {thread_id}")  # 显示临时消息
-        extracted_content = nga_scraper(thread_id)
-        placeholder.empty() 
-        return extracted_content, prompts["NGA"]
+        return nga_scraper(thread_id), prompts["NGA"]
 
     # 匹配指定格式的URL
     match = re.match(r'https?://([^/]+)/test/read\.cgi/([^/]+)/(\d+)/?', url)
@@ -87,8 +80,7 @@ def handle_url(url):
         thread_id = match.group(3)
         placeholder = st.empty()  # 创建一个空的占位符
         placeholder.text(f"已识别到5ch类网址，来源{sever}的{board}板块，串ID：{thread_id}")  # 打印识别结果
-        extracted_content = five_chan_scraper(sever, board, thread_id)
-        placeholder.empty() 
+        # 调用fivechan_scraper函数
         return five_chan_scraper(sever, board, thread_id), prompts["5ch"]
 
     st.write("未匹配到正确帖子链接.")
