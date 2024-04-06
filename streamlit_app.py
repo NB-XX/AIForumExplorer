@@ -84,7 +84,7 @@ def handle_url(url):
 st.title("TL;DR——你的生命很宝贵")
 st.write("当前版本 v0.1.1 更新日期：2024日4月6日")
 
-url = st.text_input("请输入4Chan\Stage1st\NGA\5ch类帖子链接:", key="url_input")
+url = st.text_input(r"请输入4Chan\Stage1st\NGA\5ch类帖子链接:", key="url_input")
 
 # 设置触发按钮
 if st.button("开始分析"):
