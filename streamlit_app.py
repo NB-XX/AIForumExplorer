@@ -104,49 +104,16 @@ model_choice = st.selectbox(
 
 if st.button("切换模型"):
     st.success(f"切换模型成功: {model_choice}")
-# 使用session_state来跟踪对话历史
-if 'history' not in st.session_state:
-    st.session_state['history'] = []
 
 if url:
     extracted_content, site_prompt = handle_url(url)
-    placeholder = st.empty()  
-    placeholder.text(f"帖子内容拉取完毕，等待生成中……")  
     if extracted_content and model_choice:
-        if 'initial_prompt' not in st.session_state:
-            st.session_state['initial_prompt'] = f"{site_prompt}+{extracted_content}"
-        
-        # 首次生成内容
-        if not st.session_state['history']:
-            response_text, blocked = generate_content_with_context(st.session_state['initial_prompt'], model_choice)
-            if not blocked:
-                st.markdown(response_text)
-            else:
-                st.write(response_text)
-        
-        # 为后续输入和按钮预留位置
-        input_placeholder = st.empty()
-        button_placeholder = st.empty()
-
-        # 如果已有生成内容，则显示继续对话的输入框
-        if st.session_state['history'] or not blocked:
-            user_input = input_placeholder.text_input("继续对话：", key="new_user_input")
-            if button_placeholder.button("提交", key="new_submit"):
-                # 更新历史记录
-                st.session_state['history'].append(user_input)
-                input_placeholder.empty()  # 清除输入框
-                button_placeholder.empty()  # 清除按钮
-
-                # 生成新的prompt
-                new_prompt = st.session_state['initial_prompt'] + "\n\n".join(st.session_state['history'])
-                response_text, blocked = generate_content_with_context(new_prompt, model_choice)
-                
-                if not blocked:
-                    st.markdown(response_text)
-                else:
-                    st.write(response_text)
-
-        if st.session_state['history']:
-            # 显示之前所有的对话和最后的生成内容
-            for i, text in enumerate(st.session_state['history'][:-1]):  # 不显示最后一条，因为它已在markdown中显示
-                st.text_area(f"Round {i+1}:", value=text, height=75, key=f"round_{i}")
+        placeholder = st.empty()  # 创建一个空的占位符
+        placeholder.text("帖子已拉取完毕，正在等待模型生成...")
+        prompt = f"{site_prompt}+{extracted_content}"
+        response_text, blocked = generate_content_with_context(prompt, model_choice)
+        placeholder.empty()  # 清除临时消息
+        if not blocked:
+            st.markdown(response_text)  # 显示模型生成的内容
+        else:
+            st.write(response_text)
