@@ -97,7 +97,7 @@ model_choice = st.selectbox(
 
 if st.button("切换模型"):
     st.success(f"切换模型成功: {model_choice}")
-
+# 使用session_state来跟踪对话历史
 if 'history' not in st.session_state:
     st.session_state['history'] = []
 
@@ -107,24 +107,37 @@ if url:
         if 'initial_prompt' not in st.session_state:
             st.session_state['initial_prompt'] = f"{site_prompt}+{extracted_content}"
         
-        # 在模型生成内容后显示用户的输入框
-        user_input = st.text_input("继续对话：", key="user_input")
-        
-        if st.button("提交", key="submit"):
-            # 更新历史记录
-            st.session_state['history'].append(user_input)
-            st.session_state['user_input'] = ""  # 清空输入框
-
-            # 生成新的prompt
-            new_prompt = st.session_state['initial_prompt'] + "\n\n".join(st.session_state['history'])
-            response_text, blocked = generate_content_with_context(new_prompt, model_choice)
-            
+        # 首次生成内容
+        if not st.session_state['history']:
+            response_text, blocked = generate_content_with_context(st.session_state['initial_prompt'], model_choice)
             if not blocked:
                 st.markdown(response_text)
             else:
                 st.write(response_text)
+        
+        # 为后续输入和按钮预留位置
+        input_placeholder = st.empty()
+        button_placeholder = st.empty()
+
+        # 如果已有生成内容，则显示继续对话的输入框
+        if st.session_state['history'] or not blocked:
+            user_input = input_placeholder.text_input("继续对话：", key="new_user_input")
+            if button_placeholder.button("提交", key="new_submit"):
+                # 更新历史记录
+                st.session_state['history'].append(user_input)
+                input_placeholder.empty()  # 清除输入框
+                button_placeholder.empty()  # 清除按钮
+
+                # 生成新的prompt
+                new_prompt = st.session_state['initial_prompt'] + "\n\n".join(st.session_state['history'])
+                response_text, blocked = generate_content_with_context(new_prompt, model_choice)
+                
+                if not blocked:
+                    st.markdown(response_text)
+                else:
+                    st.write(response_text)
 
         if st.session_state['history']:
-            # 如果历史记录不为空，则显示之前所有的对话和最后的生成内容
-            for i, text in enumerate(st.session_state['history']):
+            # 显示之前所有的对话和最后的生成内容
+            for i, text in enumerate(st.session_state['history'][:-1]):  # 不显示最后一条，因为它已在markdown中显示
                 st.text_area(f"Round {i+1}:", value=text, height=75, key=f"round_{i}")
