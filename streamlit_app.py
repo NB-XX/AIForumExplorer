@@ -18,7 +18,7 @@ def is_content_blocked(prompt_feedback_str):
 
 def generate_content_with_context(initial_prompt, model_choice, max_attempts=3):
     genai.configure(api_key=st.secrets["api_key"])
-    model = genai.GenerativeModel(model_choice)  # 使用用户选择的模型
+    model = genai.GenerativeModel(model_choice)
     attempts = 0
     messages = [{'role': 'user', 'parts': [initial_prompt]}]
 
@@ -29,20 +29,21 @@ def generate_content_with_context(initial_prompt, model_choice, max_attempts=3):
             HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
             HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
         })
-        
-        # 检查响应是否被屏蔽
+
         if 'block_reason: SAFETY' in str(response.prompt_feedback):
             st.write(f"被屏蔽{attempts + 1}次: 正常尝试重新输出")
-            # 尝试多次
             messages.append({'role': 'user', 'parts': ["继续生成"]})
             attempts += 1
         else:
-            # 确保有文本可以返回
             try:
-                text_output = response.text
-                return text_output, False
-            except ValueError as e:
-                return f"获取内容失败:{e}", True  
+                if response.candidates:  # 确认是否有候选响应
+                    text_output = response.candidates[0].text  # 取第一个候选响应的文本
+                    return text_output, False
+                else:
+                    return "没有生成内容。", True
+            except AttributeError as e:
+                # 如果响应对象没有.candidates属性，会捕获AttributeError
+                return f"响应解析失败：{e}", True
     return "被屏蔽太多次，完蛋了", True
 
 
@@ -121,7 +122,8 @@ if url:
         placeholder.empty()  # 清除临时消息
         if "获取内容失败" in response_text:
             st.error(response_text)
-        if not blocked:
-            st.markdown(response_text)  # 显示模型生成的内容
         else:
-            st.write(response_text)
+            if not blocked:
+                st.markdown(response_text)  # 显示模型生成的内容
+            else:
+                st.write(response_text)
