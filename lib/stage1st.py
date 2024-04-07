@@ -3,7 +3,7 @@ import html
 import re
 from datetime import datetime
 import streamlit as st
-
+sid_str = st.secrets["s1sid"]
 def extract_json(data):
     extracted_posts = []
     
@@ -53,7 +53,7 @@ def timestamp_to_date(timestamp):
     # 将时间戳转换为可读的日期格式
     return datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
 
-def get_thread_info(thread_id, sid="RwyOj3"):
+def get_thread_info(thread_id, sid=sid_str):
     url = "https://app.saraba1st.com:443/2b/api/app/thread"
     params = {'sid': sid, 'tid': thread_id}
     data = download_json(url, params)
@@ -62,7 +62,7 @@ def get_thread_info(thread_id, sid="RwyOj3"):
     else:
         return None
 
-def S1_scraper(thread_id, sid="RwyOj3"):
+def S1_scraper(thread_id, sid=sid_str):
     thread_info = get_thread_info(thread_id, sid)
     if not thread_info:
         return "Failed to fetch thread info."
