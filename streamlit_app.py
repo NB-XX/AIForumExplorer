@@ -43,6 +43,14 @@ def generate_content_with_context(initial_prompt, model_choice, max_attempts=3):
     return "被屏蔽太多次，完蛋了", True
 
 
+def link_replacement(match):
+    numbers = match.group(1).split(',')
+    # 为每个数字生成链接
+    links = [f'[[{num}]](https://bbs.saraba1st.com/2b/forum.php?mod=redirect&ptid={thread_id}&authorid=0&postno={num})' for num in numbers]
+    # 将链接组合成一个字符串，用逗号和空格分隔
+    return ', '.join(links)
+
+
 def handle_url(url):
 
     # 4chan的URL匹配
@@ -85,7 +93,7 @@ def handle_url(url):
     st.write("未匹配到正确帖子链接.")
 
 st.title("TL;DR——你的生命很宝贵")
-st.write("当前版本 v0.1.1 更新日期：2024日4月6日")
+st.write("当前版本 v0.1.2 更新日期：2024日4月7日")
 
 url = st.text_input(r"请输入4Chan\Stage1st\NGA\5ch类帖子链接:", key="url_input")
 
@@ -122,10 +130,9 @@ if url:
             if not blocked:
                 if parser_name == "s1":
                     thread_id = params["thread_id"]
-                    pattern = r'\[(\d+)\]'
-                    replacement = lambda match: f'[{match.group(1)}](https://bbs.saraba1st.com/2b/forum.php?mod=redirect&ptid={thread_id}&authorid=0&postno={match.group(1)})'
-                    response_text = re.sub(pattern, replacement, response_text)
-                    st.markdown(response_text)  # 显示模型生成的内容
+                    pattern = r'\[(\d+(?:,\d+)*)\]'
+                    formatted_text = re.sub(pattern, link_replacement, response_text)
+                    st.markdown(formatted_text)  # 显示模型生成的内容
                 else:
                     st.write(response_text)
             else:
