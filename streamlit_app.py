@@ -17,8 +17,7 @@ def generate_content_with_context(initial_prompt, model_choice, max_attempts=3):
     model = genai.GenerativeModel(model_choice)
     attempts = 0
     messages = [{'role': 'user', 'parts': [initial_prompt]}]
-    totalTokens = len(initial_prompt) * 0.75
-    st.write(f"提示词大约消耗{totalTokens}token")
+    st.write(f"已传入{len(initial_prompt) }字")
     while attempts < max_attempts:
         response = model.generate_content(messages, safety_settings={
             HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
