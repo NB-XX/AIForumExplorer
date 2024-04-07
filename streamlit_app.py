@@ -60,7 +60,8 @@ def handle_url(url):
         thread_id = match_4chan.group(2)
         placeholder = st.empty()  # 创建一个空的占位符
         placeholder.text(f"已识别到4chan{board}板块帖子，串ID: {thread_id}")  # 显示临时消息
-        return four_chan_scrape(thread_id,board), prompts["4chan"]
+        params = {"thread_id":thread_id, "board":board}
+        return four_chan_scrape(thread_id,board), prompts["4chan"], '4chan', params
 
     # Stage1st的URL匹配
     match_s1 = re.match(r'https?://bbs\.saraba1st\.com/2b/thread-(\d+)-\d+-\d+\.html', url)
@@ -77,7 +78,8 @@ def handle_url(url):
         thread_id = match_nga.group(1)  # 提取帖子ID
         placeholder = st.empty()  # 创建一个空的占位符
         placeholder.text(f"已识别到NGA帖子，帖子ID: {thread_id}")  # 显示临时消息
-        return nga_scraper(thread_id), prompts["NGA"]
+        params = {"thread_id":thread_id}
+        return nga_scraper(thread_id), prompts["NGA"],'nga', params
 
     # 匹配指定格式的URL
     match = re.match(r'https?://([^/]+)/test/read\.cgi/([^/]+)/(\d+)/?', url)
@@ -87,8 +89,9 @@ def handle_url(url):
         thread_id = match.group(3)
         placeholder = st.empty()  # 创建一个空的占位符
         placeholder.text(f"已识别到5ch类网址，来源{sever}的{board}板块，串ID：{thread_id}")  # 打印识别结果
+        params = {"sever":sever, "board":board, "thread_id":thread_id}
         # 调用fivechan_scraper函数
-        return five_chan_scraper(sever, board, thread_id), prompts["5ch"]
+        return five_chan_scraper(sever, board, thread_id), prompts["5ch"], '5ch', params
 
     st.write("未匹配到正确帖子链接.")
 
