@@ -44,6 +44,7 @@ def generate_content_with_context(initial_prompt, model_choice, max_attempts=3):
 
 
 def handle_url(url):
+
     # 4chan的URL匹配
     match_4chan = re.match(r'https?://boards\.4chan\.org/(\w+)/thread/(\d+)', url)
     if match_4chan:
@@ -59,7 +60,8 @@ def handle_url(url):
         thread_id = match_s1.group(1)
         placeholder = st.empty()  # 创建一个空的占位符
         placeholder.text(f"已识别到Stage1st帖子，帖子ID: {thread_id}")  # 显示临时消息
-        return S1_scraper(thread_id), prompts["Stage1st"]
+        params = {"thread_id":thread_id}
+        return S1_scraper(thread_id), prompts["Stage1st"], 's1', params
     
     # NGA的URL匹配
     match_nga = re.match(r'https?://(?:bbs\.nga\.cn|nga\.178\.com)/read\.php\?tid=(\d+)', url)
@@ -107,7 +109,7 @@ if st.button("切换模型"):
     st.success(f"切换模型成功: {model_choice}")
 
 if url:
-    extracted_content, site_prompt = handle_url(url)
+    extracted_content, site_prompt, parser_name, params = handle_url(url)
     if extracted_content and model_choice:
         placeholder = st.empty()  # 创建一个空的占位符
         placeholder.text("帖子已拉取完毕，正在等待模型生成...")
@@ -118,6 +120,13 @@ if url:
             st.error(response_text)
         else:
             if not blocked:
-                st.markdown(response_text)  # 显示模型生成的内容
+                if parser_name == "s1":
+                    thread_id = params["thread_id"]
+                    pattern = r'\[(\d+)\]'
+                    replacement = lambda match: f'[{match.group(1)}](https://bbs.saraba1st.com/2b/forum.php?mod=redirect&ptid={thread_id}&authorid=0&postno={match.group(1)})'
+                    response_text = re.sub(pattern, replacement, response_text)
+                    st.markdown(response_text)  # 显示模型生成的内容
+                else:
+                    st.write(response_text)
             else:
                 st.write(response_text)
