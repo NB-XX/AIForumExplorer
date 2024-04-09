@@ -3,91 +3,83 @@ import html
 import re
 from datetime import datetime
 import streamlit as st
-sid_str = st.secrets["s1sid"]
-def extract_json(data):
-    extracted_posts = []
-    
-    # 创建一个pid到position的映射用于处理引用
-    pid_to_position = {post["pid"]: post["position"] for post in data["data"]["list"]}
-    
-    for post in data["data"]["list"]:
-        post_no = post["position"]
-        author = post["author"]
-        message = post.get("message", "")
-        
-        # 提取所有引用的pid
-        pids = re.findall(r'goto=findpost&amp;pid=(\d+)&amp;', message)
-        resto = [str(pid_to_position[int(pid)]) for pid in pids if int(pid) in pid_to_position]
-        
-        # 对包含引用pid的<blockquote>进行移除
-        for pid in pids:
-            if int(pid) in pid_to_position:
-                message = re.sub(f'<div class="quote"><blockquote>.*?goto=findpost&pid={pid}&.*?</blockquote></div>', '', message, flags=re.DOTALL)
-        
-        # 清理和转换消息内容
-        com = html.unescape(message)
-        com = re.sub('本帖最后由 .*? 于 \d{4}-\d{1,2}-\d{1,2} \d{1,2}:\d{2} 编辑', '', com)
-        com = re.sub('—— 来自 .*$', '', com, flags=re.MULTILINE)
-        com = re.sub('----发送自 .*$', '', com, flags=re.MULTILINE)
-        com = re.sub('<[^<]+?>', '', com)
-        com = com.replace("<br>", "\n").replace("<br />", "\n")
-        com = re.sub('\n\s*\n', '\n', com)
-        extracted_posts.append({"no": post_no, "author": author, "resto": resto, "com": com})
-    
-    return extracted_posts
 
+def convert_html_to_text(html_content):
+    """将HTML内容转换为纯文本，移除或转换一些特定格式。"""
+    text = html.unescape(html_content)
+    text = re.sub('本帖最后由 .*? 于 \d{4}-\d{1,2}-\d{1,2} \d{1,2}:\d{2} 编辑', '', text)
+    text = re.sub('—— 来自 .*$', '', text, flags=re.MULTILINE)
+    text = re.sub('----发送自 .*$', '', text, flags=re.MULTILINE)
+    text = re.sub('<[^<]+?>', '', text)
+    text = text.replace("<br>", "\n").replace("<br />", "\n")
+    text = re.sub('\n\s*\n', '\n', text)
+    return text
 
+def extract_post_data(post, pid_to_position):
+    """从单个帖子的数据中提取和处理信息。"""
+    post_no = post["position"]
+    author = post["author"]
+    message = post.get("message", "")
+    
+    # 提取所有引用的pid并转换为帖子位置
+    pids = re.findall(r'goto=findpost&amp;pid=(\d+)&amp;', message)
+    resto = [str(pid_to_position[int(pid)]) for pid in pids if int(pid) in pid_to_position]
+    
+    # 移除包含引用pid的<blockquote>
+    message = re.sub(f'<div class="quote"><blockquote>.*?goto=findpost&pid=(\d+)&.*?</blockquote></div>', '', message, flags=re.DOTALL)
+    
+    com = convert_html_to_text(message)
+    return {"no": post_no, "author": author, "resto": resto, "com": com}
 
 def download_json(url, params):
-    try:
-        headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-        response = requests.post(url, data=params, headers=headers)
-        response.raise_for_status()
-        data = response.json()
-    except requests.RequestException as e:
-        print(f"请求出错: {e}")
-        return None
-    return data
+    """下载并返回JSON数据。"""
+    headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+    response = requests.post(url, headers=headers, data=params)
+    response.raise_for_status()
+    return response.json()
 
-def timestamp_to_date(timestamp):
-    # 将时间戳转换为可读的日期格式
-    return datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
-
-def get_thread_info(thread_id, sid=sid_str):
+def fetch_thread_info(thread_id, sid):
+    """获取指定帖子的基本信息。"""
     url = "https://app.saraba1st.com:443/2b/api/app/thread"
     params = {'sid': sid, 'tid': thread_id}
-    data = download_json(url, params)
-    if data and data["success"]:
-        return data["data"]
-    else:
-        return None
+    return download_json(url, params)
 
-def S1_scraper(thread_id, sid=sid_str):
-    thread_info = get_thread_info(thread_id, sid)
-    if not thread_info:
+def extract_and_format_posts(thread_data):
+    """提取帖子数据并格式化输出。"""
+    extracted_posts = []
+    pid_to_position = {post["pid"]: post["position"] for post in thread_data["data"]["list"]}
+    
+    for post in thread_data["data"]["list"]:
+        extracted_posts.append(extract_post_data(post, pid_to_position))
+    
+    formatted_posts = []
+    for post in extracted_posts:
+        resto_str = ",".join(post['resto'])
+        post_content = f"No:{post['no']}, Author:{post['author']}, Reply:{resto_str}, Msg:{post['com']}"
+        formatted_posts.append(post_content)
+    
+    return "\n".join(formatted_posts)
+
+def S1_scraper(thread_id):
+    sid = st.secrets["s1sid"]
+    thread_info = fetch_thread_info(thread_id, sid)
+    
+    if not thread_info or not thread_info.get("success"):
         return "Failed to fetch thread info."
     
-    replies = int(thread_info["replies"])
-    pageSize = min(1000, replies + 1)  # +1考虑到楼主帖子本身，设置pageSize不超过1000
-    
-    total_pages = (replies + pageSize - 1) // pageSize  # 向上取整计算总页数
+    replies = thread_info["data"]["replies"]
+    pageSize = min(1000, replies + 1)  # 最大拉取1000 防止S1暴死
+    total_pages = (replies + pageSize - 1) // pageSize 
     url = "https://app.saraba1st.com:443/2b/api/app/thread/page"
-    extracted_content = f"Subject: {thread_info['subject']}, Date: {timestamp_to_date(int(thread_info['dateline']))}, " \
-                        f"Forum: {thread_info['fname']}, Replies: {replies}, Author: {thread_info['author']}\n"
+    
+    extracted_content = f"Subject: {thread_info['data']['subject']}, Date: {datetime.fromtimestamp(int(thread_info['data']['dateline'])).strftime('%Y-%m-%d %H:%M:%S')}, " \
+                        f"Forum: {thread_info['data']['fname']}, Replies: {replies}, Author: {thread_info['data']['author']}\n"
     
     for page in range(1, total_pages + 1):
-        page_params = {'sid': sid, 'tid': thread_id, 'pageNo': page, 'pageSize': pageSize}
-        page_data = download_json(url, page_params)
-        if page_data and page_data["success"]:
-            extracted_data = extract_json(page_data)
-            
-            for post in extracted_data:
-                if post['resto']:
-                    resto_str = ",".join(post['resto'])  # 将resto数组转换为逗号分隔的字符串
-                    post_content = f"No:{post['no']}, Author:{post['author']}, Reply:{resto_str}, Msg:{post['com']}\n"
-                else:
-                    post_content = f"No:{post['no']}, Author:{post['author']}, Msg:{post['com']}\n"
-                extracted_content += post_content
+        params = {'sid': sid, 'tid': thread_id, 'pageNo': page, 'pageSize': pageSize}
+        page_data = download_json(url, params)
+        if page_data and page_data.get("success"):
+            extracted_content += extract_and_format_posts(page_data)
 
     return extracted_content
 
