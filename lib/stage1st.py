@@ -67,7 +67,7 @@ def S1_scraper(thread_id):
     if not thread_info or not thread_info.get("success"):
         return "Failed to fetch thread info."
     
-    replies = thread_info["data"]["replies"]
+    replies = int(thread_info["data"]["replies"]) 
     pageSize = min(1000, replies + 1)  # 最大拉取1000 防止S1暴死
     total_pages = (replies + pageSize - 1) // pageSize 
     url = "https://app.saraba1st.com:443/2b/api/app/thread/page"
