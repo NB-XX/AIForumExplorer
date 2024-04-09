@@ -24,7 +24,7 @@ def generate_content_with_context(initial_prompt, model_choice, max_attempts=3):
             HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
             HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
             HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-        })
+        },generation_config=genai.types.GenerationConfig(temperature=1.0))
 
         if 'block_reason' in str(response.prompt_feedback):
             st.write(f"被屏蔽{attempts + 1}次: 正常尝试重新输出。{response.prompt_feedback}")
@@ -43,11 +43,14 @@ def generate_content_with_context(initial_prompt, model_choice, max_attempts=3):
     return "被屏蔽太多次，完蛋了", True
 
 
-def link_replacement(match):
+def s1_link_replacement(match):
     numbers = match.group(1).split(',')
-    # 为每个数字生成链接
     links = [f'[[{num}]](https://bbs.saraba1st.com/2b/forum.php?mod=redirect&ptid={thread_id}&authorid=0&postno={num})' for num in numbers]
-    # 将链接组合成一个字符串，用逗号和空格分隔
+    return ', '.join(links)
+
+def nga_link_replacement(match):
+    numbers = match.group(1).split(',')
+    links = [f'[[{num}]](https://bbs.nga.cn/read.php?pid={thread_id}&opt={num})' for num in numbers]
     return ', '.join(links)
 
 
@@ -130,12 +133,17 @@ if url:
         if "获取内容失败" in response_text:
             st.error(response_text)
         else:
-            if not blocked:
+            if not blocked: # 这里写的实在是太丑陋了 但是我不知道怎么优雅的处理
                 if parser_name == "s1":
                     thread_id = params["thread_id"]
                     pattern = r'\[(\d+(?:,\d+)*)\]'
-                    formatted_text = re.sub(pattern, link_replacement, response_text)
-                    st.markdown(formatted_text)  # 显示模型生成的内容
+                    formatted_text = re.sub(pattern, s1_link_replacement, response_text)
+                    st.markdown(formatted_text)  
+                if parser_name == "nga":
+                    thread_id = params["thread_id"]
+                    pattern = r'\[(\d+(?:,\d+)*)\]'
+                    formatted_text = re.sub(pattern, nga_link_replacement, response_text)
+                    st.markdown(formatted_text)
                 else:
                     st.write(response_text)
             else:
