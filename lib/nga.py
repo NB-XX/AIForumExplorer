@@ -73,7 +73,7 @@ def process_posts(posts):
         content = re.sub(r'\[quote\].*?\[\/quote\]', '', content)
         com = ' '.join(content.split())
 
-        extracted_content += f"No:{no}, Author:{author}, Reply:{resto}, Msg:{com}\n"
+        extracted_content += f"Pid:{pid}, No:{no}, Author:{author}, Reply:{resto}, Msg:{com}\n"
     
     return extracted_content
 
