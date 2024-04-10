@@ -143,18 +143,18 @@ if url:
                     pattern = r'\[(\d+(?:,\d+)*)\]'
                     formatted_text = re.sub(pattern, s1_link_replacement, response_text)
                     st.markdown(formatted_text)  
-                if parser_name == "nga":
-                    thread_id = params["thread_id"]
-                    board = params["board"]
-                    pattern = r'\[(\d+(?:,\d+)*)\]'
-                    formatted_text = re.sub(pattern, nga_link_replacement, response_text)
-                    st.markdown(formatted_text)
-                if parser_name == "5ch":
-                    sever = params["sever"]
-                    thread_id = params["thread_id"]
-                    pattern = r'\[(\d+(?:,\d+)*)\]'
-                    formatted_text = re.sub(pattern, five_chan_link_replacement, response_text)
-                    st.markdown(formatted_text)
+                # if parser_name == "nga":
+                #     thread_id = params["thread_id"]
+                #     board = params["board"]
+                #     pattern = r'\[(\d+(?:,\d+)*)\]'
+                #     formatted_text = re.sub(pattern, nga_link_replacement, response_text)
+                #     st.markdown(formatted_text)
+                # if parser_name == "5ch":
+                #     sever = params["sever"]
+                #     thread_id = params["thread_id"]
+                #     pattern = r'\[(\d+(?:,\d+)*)\]'
+                #     formatted_text = re.sub(pattern, five_chan_link_replacement, response_text)
+                #     st.markdown(formatted_text)
                 else:
                     st.write(response_text)
             else:
