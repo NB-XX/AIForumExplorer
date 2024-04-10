@@ -53,6 +53,10 @@ def nga_link_replacement(match):
     links = [f'[[{num}]](https://bbs.nga.cn/read.php?pid={thread_id}&opt={num})' for num in numbers]
     return ', '.join(links)
 
+def five_chan_link_replacement(match):
+    numbers = match.group(1).split(',')
+    links = [f'[[{num}]](https://{sever}/test/read.cgi/{board}/{thread_id}/{num})' for num in numbers]
+    return ', '.join(links)
 
 def handle_url(url):
 
@@ -84,7 +88,7 @@ def handle_url(url):
         params = {"thread_id":thread_id}
         return nga_scraper(thread_id), prompts["NGA"],'nga', params
 
-    # 匹配指定格式的URL
+    # 5ch的URL匹配
     match = re.match(r'https?://([^/]+)/test/read\.cgi/([^/]+)/(\d+)/?', url)
     if match:
         sever = match.group(1)
@@ -99,7 +103,7 @@ def handle_url(url):
     st.write("未匹配到正确帖子链接.")
 
 st.title("TL;DR——你的生命很宝贵")
-st.write("当前版本 v0.1.2 更新日期：2024日4月7日")
+st.write("当前版本 v0.1.2 更新日期：2024日4月10日")
 
 url = st.text_input(r"请输入4Chan\Stage1st\NGA\5ch类帖子链接:", key="url_input")
 
@@ -141,8 +145,15 @@ if url:
                     st.markdown(formatted_text)  
                 if parser_name == "nga":
                     thread_id = params["thread_id"]
+                    board = params["board"]
                     pattern = r'\[(\d+(?:,\d+)*)\]'
                     formatted_text = re.sub(pattern, nga_link_replacement, response_text)
+                    st.markdown(formatted_text)
+                if parser_name == "5ch":
+                    sever = params["sever"]
+                    thread_id = params["thread_id"]
+                    pattern = r'\[(\d+(?:,\d+)*)\]'
+                    formatted_text = re.sub(pattern, five_chan_link_replacement, response_text)
                     st.markdown(formatted_text)
                 else:
                     st.write(response_text)
