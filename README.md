@@ -14,6 +14,6 @@
 
 ![界面演示](https://raw.githubusercontent.com/NB-XX/AIForumExplorer/main/res/example.png)
 ## 更新计划
-- [] 全平台实现引用楼层链接跳转
-- [] 模版化稳定输出
-- [] 多轮会话
+- [ ] 全平台实现引用楼层链接跳转
+- [ ] 模版化稳定输出
+- [ ] 多轮会话
