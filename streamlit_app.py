@@ -48,17 +48,17 @@ def s1_link_replacement(match):
     links = [f'[[{num}]](https://bbs.saraba1st.com/2b/forum.php?mod=redirect&ptid={thread_id}&authorid=0&postno={num})' for num in numbers]
     return ', '.join(links)
 
-def nga_link_replacement(match):
-    numbers = match.group(1).split(',')
-    links = [f'[[{num}]](https://bbs.nga.cn/read.php?pid={thread_id}&opt={num})' for num in numbers]
-    return ', '.join(links)
+# def nga_link_replacement(match):
+#     numbers = match.group(1).split(',')
+#     links = [f'[[{num}]](https://bbs.nga.cn/read.php?pid={thread_id}&opt={num})' for num in numbers]
+#     return ', '.join(links)
 
-def five_chan_link_replacement(match):
-    numbers = match.group(1).split(',')
-    links = [f'[[{num}]](https://{sever}/test/read.cgi/{board}/{thread_id}/{num})' for num in numbers]
-    return ', '.join(links)
+# def five_chan_link_replacement(match):
+#     numbers = match.group(1).split(',')
+#     links = [f'[[{num}]](https://{sever}/test/read.cgi/{board}/{thread_id}/{num})' for num in numbers]
+#     return ', '.join(links)
 
-def handle_url(url):
+def handle_url(url,date_filter):
 
     # 4chan的URL匹配
     match_4chan = re.match(r'https?://boards\.4chan\.org/(\w+)/thread/(\d+)', url)
@@ -86,7 +86,7 @@ def handle_url(url):
         placeholder = st.empty()  # 创建一个空的占位符
         placeholder.text(f"已识别到NGA帖子，帖子ID: {thread_id}")  # 显示临时消息
         params = {"thread_id":thread_id}
-        return nga_scraper(thread_id), prompts["NGA"],'nga', params
+        return nga_scraper(thread_id,date_filter), prompts["NGA"],'nga', params
 
     # 5ch的URL匹配
     match = re.match(r'https?://([^/]+)/test/read\.cgi/([^/]+)/(\d+)/?', url)
@@ -107,9 +107,29 @@ st.write("当前版本 v0.1.3 更新日期：2024日4月13日")
 
 url = st.text_input(r"请输入4Chan\Stage1st\NGA\5ch类帖子链接:", key="url_input")
 
-# 设置触发按钮
-if st.button("开始分析"):
-    st.session_state['url'] = st.session_state['url_input']
+# 列布局
+col1, col2 = st.columns(2)
+
+with col1:
+    # 下拉选择时间筛选选项
+    date_filter_options = {
+        "none": "不过滤",
+        "day": "过去一天",
+        "week": "过去一周",
+        "month": "过去一月"
+    }
+    date_filter = st.selectbox(
+        "选择时间筛选选项：",
+        options=list(date_filter_options.keys()),
+        format_func=lambda x: date_filter_options[x]
+    )
+
+with col2:
+    # 分析按钮
+    if st.button("开始分析"):
+        st.session_state['url'] = st.session_state['url_input']
+        st.session_state['date_filter'] = date_filter
+
 
 # 模型选择
 model_options = {
@@ -127,7 +147,7 @@ if st.button("切换模型"):
     st.success(f"切换模型成功: {model_choice}")
 
 if url:
-    extracted_content, site_prompt, parser_name, params = handle_url(url)
+    extracted_content, site_prompt, parser_name, params = handle_url(url,date_filter)
     if extracted_content and model_choice:
         placeholder = st.empty()  # 创建一个空的占位符
         placeholder.text("帖子已拉取完毕，正在等待模型生成...")
@@ -143,8 +163,6 @@ if url:
                     pattern = r'\[(\d+(?:,\d+)*)\]'
                     formatted_text = re.sub(pattern, s1_link_replacement, response_text)
                     st.markdown(formatted_text)  
-                    append_input = st.text_input(r"我还想问", key="append_input")
-                    st.button("继续提问")
                 # if parser_name == "nga":
                 #     thread_id = params["thread_id"]
                 #     board = params["board"]
@@ -159,19 +177,5 @@ if url:
                 #     st.markdown(formatted_text)
                 else:
                     st.write(response_text)
-            else:
-                st.write(response_text)
-
-        if st.button("继续提问"):
-            prompt = f"{site_prompt}+{extracted_content}+{append_input}"
-            response_text, blocked = generate_content_with_context(prompt, model_choice)
-            if not blocked: # 这里写的实在是太丑陋了 但是我不知道怎么优雅的处理
-                if parser_name == "s1":
-                    thread_id = params["thread_id"]
-                    pattern = r'\[(\d+(?:,\d+)*)\]'
-                    formatted_text = re.sub(pattern, s1_link_replacement, response_text)
-                    st.markdown(formatted_text)  
-                    append_input = st.text_input(r"我还想问", key="append_input")
-                    st.button("继续提问")
             else:
                 st.write(response_text)
