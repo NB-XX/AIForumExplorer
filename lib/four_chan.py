@@ -1,7 +1,7 @@
 import requests
 import re
 import html
-from ocr import ocr_space_url  # 确保从正确的文件导入ocr_space_url函数
+from lib.ocr_api import ocr_space_url  # 确保从正确的文件导入ocr_space_url函数
 
 def download_and_extract_json(url,board):
     try:
