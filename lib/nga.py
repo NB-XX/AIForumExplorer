@@ -40,7 +40,6 @@ def process_posts(posts):
     """处理和格式化帖子内容。"""
     pid_to_no = {post['pid']: post['lou'] + 1 for post in posts}
     extracted_content = []
-    beijing = pytz.timezone('Asia/Shanghai')
 
     for post in posts:
         pid, lou, author = post['pid'], post['lou'], post['author']['username']
@@ -51,9 +50,7 @@ def process_posts(posts):
         quotes = re.findall(r'\[quote\]\[pid=(\d+),\d+,\d+\]Reply\[\/pid\]', content)
         resto = ', '.join(str(pid_to_no.get(int(q), '')) for q in quotes)
         content = re.sub(r'\[quote\].*?\[\/quote\]', '', content).strip()
-
-        post_timestamp = int(post['postdate'])
-        postdate = datetime.fromtimestamp(post_timestamp, beijing).strftime('%Y-%m-%d %H:%M')
+        postdate = post['postdate']
 
         extracted_content.append(f"Pid:{pid}, No:{no}, Author:{author}, Reply:{resto}, Msg:{content}, PostDate:{postdate}")
 
@@ -61,7 +58,10 @@ def process_posts(posts):
 
 
 def filter_posts_by_date(posts, date_filter):
-    """根据时间过滤帖子。"""
+    """根据时间过滤帖子，但始终包括第一个帖子。"""
+    if not posts:
+        return posts  # 如果帖子列表为空，则直接返回
+
     now = datetime.now(pytz.timezone('Asia/Shanghai'))
     if date_filter == 'day':
         time_threshold = now - timedelta(days=1)
@@ -72,7 +72,13 @@ def filter_posts_by_date(posts, date_filter):
     else:
         return posts  # 不进行过滤
 
-    filtered_posts = [post for post in posts if datetime.fromtimestamp(post['postdate'], pytz.timezone('Asia/Shanghai')) >= time_threshold]
+    # 定义日期时间格式
+    datetime_format = '%Y-%m-%d %H:%M'
+    
+    # 始终包括第一个帖子
+    first_post = posts[0]
+    filtered_posts = [first_post] + [post for post in posts[1:] if datetime.strptime(post['postdate'], datetime_format) >= time_threshold]
+
     return filtered_posts
 
 def nga_scraper(tid, date_filter='none'):
