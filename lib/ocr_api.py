@@ -2,7 +2,7 @@ import requests
 import streamlit as st
 
 
-def ocr_space_file(filename, overlay=False, api_key=st.secrets["ocr_api"],language='chs'):
+def ocr_space_file(filename, overlay=False, api_key='88e628564888957',language='chs'):
     payload = {'isOverlayRequired': overlay,
                'apikey': api_key,
                'language': language,
@@ -17,7 +17,7 @@ def ocr_space_file(filename, overlay=False, api_key=st.secrets["ocr_api"],langua
     else:
         return r['ParsedResults'][0]['ParsedText']
 
-def ocr_space_url(url, overlay=False, api_key=st.secrets["ocr_api"], language='chs'):
+def ocr_space_url(url, overlay=False, api_key='88e628564888957', language='chs'):
 
     payload = {'url': url,
                'isOverlayRequired': overlay,
