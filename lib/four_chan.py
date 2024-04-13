@@ -1,7 +1,7 @@
 import requests
 import re
 import html
-from ocr_file import ocr_space_url  # 确保从正确的文件导入ocr_space_url函数
+from ocr import ocr_space_url  # 确保从正确的文件导入ocr_space_url函数
 
 def download_and_extract_json(url,board):
     try:
@@ -39,6 +39,7 @@ def download_and_extract_json(url,board):
             image_url = f"https://i.4cdn.org/{board}/{post['tim']}{post['ext']}"
             # 调用OCR函数处理图片
             ocr_text = ocr_space_url(url=image_url,language='eng')
+            print(ocr_text)
             extracted_post['img_ocr'] = ocr_text
         
         extracted_posts.append(extracted_post)
