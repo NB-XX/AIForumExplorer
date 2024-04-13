@@ -74,10 +74,12 @@ def filter_posts_by_date(posts, date_filter):
 
     # 定义日期时间格式
     datetime_format = '%Y-%m-%d %H:%M'
-    
+    beijing = pytz.timezone('Asia/Shanghai')
+
     # 始终包括第一个帖子
     first_post = posts[0]
-    filtered_posts = [first_post] + [post for post in posts[1:] if datetime.strptime(post['postdate'], datetime_format) >= time_threshold]
+    # 确保转换为带时区信息的datetime对象
+    filtered_posts = [first_post] + [post for post in posts[1:] if datetime.strptime(post['postdate'], datetime_format).replace(tzinfo=beijing) >= time_threshold]
 
     return filtered_posts
 
