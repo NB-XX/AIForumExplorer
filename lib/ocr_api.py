@@ -1,7 +1,8 @@
 import requests
 import streamlit as st
 
-api_key = st.secrets["ocr_api_key"]
+# api_key = st.secrets["ocr_api_key"]
+api_key ='helloworld'
 
 def ocr_space_file(filename, overlay=False, api_key=api_key,language='chs'):
     payload = {'isOverlayRequired': overlay,
