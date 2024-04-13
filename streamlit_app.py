@@ -143,6 +143,8 @@ if url:
                     pattern = r'\[(\d+(?:,\d+)*)\]'
                     formatted_text = re.sub(pattern, s1_link_replacement, response_text)
                     st.markdown(formatted_text)  
+                    append_input = st.text_input(r"我还想问", key="append_input")
+                    st.button("继续提问")
                 # if parser_name == "nga":
                 #     thread_id = params["thread_id"]
                 #     board = params["board"]
@@ -157,5 +159,19 @@ if url:
                 #     st.markdown(formatted_text)
                 else:
                     st.write(response_text)
+            else:
+                st.write(response_text)
+
+        if st.button("继续提问"):
+            prompt = f"{site_prompt}+{extracted_content}+{append_input}"
+            response_text, blocked = generate_content_with_context(prompt, model_choice)
+            if not blocked: # 这里写的实在是太丑陋了 但是我不知道怎么优雅的处理
+                if parser_name == "s1":
+                    thread_id = params["thread_id"]
+                    pattern = r'\[(\d+(?:,\d+)*)\]'
+                    formatted_text = re.sub(pattern, s1_link_replacement, response_text)
+                    st.markdown(formatted_text)  
+                    append_input = st.text_input(r"我还想问", key="append_input")
+                    st.button("继续提问")
             else:
                 st.write(response_text)
