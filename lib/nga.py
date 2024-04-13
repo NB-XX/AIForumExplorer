@@ -51,10 +51,14 @@ def process_posts(posts):
         quotes = re.findall(r'\[quote\]\[pid=(\d+),\d+,\d+\]Reply\[\/pid\]', content)
         resto = ', '.join(str(pid_to_no.get(int(q), '')) for q in quotes)
         content = re.sub(r'\[quote\].*?\[\/quote\]', '', content).strip()
-        postdate = datetime.fromtimestamp(post['postdate'], beijing).strftime('%Y-%m-%d %H:%M')
+
+        post_timestamp = int(post['postdate'])
+        postdate = datetime.fromtimestamp(post_timestamp, beijing).strftime('%Y-%m-%d %H:%M')
+
         extracted_content.append(f"Pid:{pid}, No:{no}, Author:{author}, Reply:{resto}, Msg:{content}, PostDate:{postdate}")
 
     return "\n".join(extracted_content)
+
 
 def filter_posts_by_date(posts, date_filter):
     """根据时间过滤帖子。"""
