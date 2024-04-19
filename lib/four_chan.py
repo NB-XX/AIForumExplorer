@@ -34,7 +34,7 @@ def download_and_extract_json(url,board):
             com = html.unescape(com)  
             extracted_post['com'] = com
         
-        检查是否有图片且文件大小小于1MB
+        # 检查是否有图片且文件大小小于1MB
         if 'tim' in post and 'fsize' in post and post['fsize'] < 1024 * 1024:
             image_url = f"https://i.4cdn.org/{board}/{post['tim']}{post['ext']}"
             # 调用OCR函数处理图片
