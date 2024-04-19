@@ -80,7 +80,7 @@ def handle_url(url,date_filter):
         return S1_scraper(thread_id), prompts["Stage1st"], 's1', params
     
     # NGA的URL匹配
-    match_nga = re.match(r'https?://(?:bbs\.nga\.cn|nga\.178\.com)/read\.php\?tid=(\d+)', url)
+    match_nga = re.match(r'https?://(?:bbs\.nga\.cn|nga\.178\.com|ngabbs\.com)/read\.php\?tid=(\d+)', url)
     if match_nga:
         thread_id = match_nga.group(1)  # 提取帖子ID
         placeholder = st.empty()  # 创建一个空的占位符
