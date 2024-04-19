@@ -35,12 +35,12 @@ def download_and_extract_json(url,board):
             extracted_post['com'] = com
         
         # 检查是否有图片且文件大小小于1MB
-        if 'tim' in post and 'fsize' in post and post['fsize'] < 1024 * 1024:
-            image_url = f"https://i.4cdn.org/{board}/{post['tim']}{post['ext']}"
-            # 调用OCR函数处理图片
-            ocr_text = ocr_space_url(url=image_url,language='eng')
-            print(ocr_text)
-            extracted_post['img_ocr'] = ocr_text
+        # if 'tim' in post and 'fsize' in post and post['fsize'] < 1024 * 1024:
+        #     image_url = f"https://i.4cdn.org/{board}/{post['tim']}{post['ext']}"
+        #     # 调用OCR函数处理图片
+        #     ocr_text = ocr_space_url(url=image_url,language='eng')
+        #     print(ocr_text)
+        #     extracted_post['img_ocr'] = ocr_text
         
         extracted_posts.append(extracted_post)
     return extracted_posts

@@ -103,7 +103,7 @@ def handle_url(url,date_filter):
     st.write("未匹配到正确帖子链接.")
 
 st.title("TL;DR——你的生命很宝贵")
-st.write("当前版本 v0.1.3 更新日期：2024日4月13日")
+st.write("当前版本 v0.1.3 更新日期：2024日4月19日")
 
 url = st.text_input(r"请输入4Chan\Stage1st\NGA\5ch类帖子链接:", key="url_input")
 
