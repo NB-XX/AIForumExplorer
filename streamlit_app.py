@@ -71,7 +71,7 @@ def handle_url(url,date_filter):
         return four_chan_scrape(thread_id,board), prompts["4chan"], '4chan', params
 
     # Stage1st的URL匹配
-    match_s1 = re.match(r'https?://bbs\.saraba1st\.com/2b/thread-(\d+)-\d+-\d+\.html', url)
+    match_s1 = re.match(r'https?://(?:www\.)?(?:saraba1st|stage1st)\.com/2b/thread-(\d+)-\d+-\d+\.html', url)
     if match_s1:
         thread_id = match_s1.group(1)
         placeholder = st.empty()  # 创建一个空的占位符
