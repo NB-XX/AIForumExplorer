@@ -133,7 +133,7 @@ with col2:
 
 # 模型选择
 model_options = {
-    "gemini-1.5-flash": "Gemini 1.0 Flash (每分钟15次查询，每天1500次查询)",
+    # "gemini-1.5-flash": "Gemini 1.0 Flash (每分钟15次查询，每天1500次查询)",
     "gemini-1.5-pro-latest": "Gemini 1.5 Pro (每分钟2次查询，每天50次查询)",
     "gemini-1.0-pro-latest": "Gemini 1.0 Pro (每分钟15次查询，每天1500次查询)"
 }
