@@ -133,6 +133,8 @@ with col2:
 
 # 模型选择
 model_options = {
+    "gemini-2.0-flash": "Gemini 2.0 Flash",
+    "gemini-2.0-pro-exp-02-05": "Gemini 2.0 pro",
     "gemini-1.5-flash": "Gemini 1.0 Flash (每分钟15次查询，每天1500次查询)",
     "gemini-1.5-pro-latest": "[因TPM限制无法处理超长文本]Gemini 1.5 Pro (每分钟2次查询，每天50次查询)",
     "gemini-1.0-pro-latest": "[因TPM限制无法处理超长文本]Gemini 1.0 Pro (每分钟15次查询，每天1500次查询)"
