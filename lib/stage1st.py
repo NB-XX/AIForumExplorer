@@ -89,7 +89,7 @@ def S1_scraper(thread_id, date_filter='none'):
     replies = int(thread_info["data"]["replies"])
     pageSize = min(1000, replies + 1)  # 最大拉取1000 防止S1暴死
     total_pages = (replies + pageSize - 1) // pageSize 
-    url = "https://app.saraba1st.com:443/2b/api/app/thread/page"
+    url = "https://app.stage1st.com:443/2b/api/app/thread/page"
     
     posts = []
     for page in range(1, total_pages + 1):
