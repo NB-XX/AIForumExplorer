@@ -71,7 +71,7 @@ def handle_url(url,date_filter):
         return four_chan_scrape(thread_id,board), prompts["4chan"], '4chan', params
 
     # Stage1st的URL匹配
-    match_s1 = re.match(r'https?://(?:www\.|bbs\.)saraba1st\.com/2b/thread-(\d+)-\d+-\d+\.html', url)
+    match_s1 = re.match(r'https?://(?:www\.|bbs\.)?(?:saraba1st\.com|stage1st\.com)/2b/thread-(\d+)-\d+-\d+\.html', url)
     if match_s1:
         thread_id = match_s1.group(1)
         placeholder = st.empty()  # 创建一个空的占位符
@@ -103,7 +103,7 @@ def handle_url(url,date_filter):
     st.write("未匹配到正确帖子链接.")
 
 st.title("TL;DR——你的生命很宝贵")
-st.write("当前版本 v0.1.5 更新日期：2024日6月2日")
+st.write("当前版本 v0.1.6 更新日期：2025年9月3日")
 
 url = st.text_input(r"请输入4Chan\Stage1st\NGA\5ch类帖子链接:", key="url_input")
 
