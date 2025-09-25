@@ -257,8 +257,8 @@ if aggregated_segments and model_choice:
     prompt = "\n---\n".join(combined_prompt_parts)
     response_text, blocked = generate_content_with_context(prompt, model_choice)
     placeholder.empty()
-    # 无论何种失败/异常字符串，统一以错误展示，避免崩溃
-    if blocked or "失败" in response_text or "异常" in response_text:
+    # 仅当 blocked=True（模型调用失败/被屏蔽/解析异常）时展示错误
+    if blocked:
         st.error(response_text)
     else:
         # 正常成功路径
