@@ -2,6 +2,7 @@ import streamlit as st
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 from lib.four_chan import four_chan_scrape
+from lib.four_chan import find_previous_threads
 from lib.stage1st import S1_scraper
 from lib.nga import nga_scraper
 from lib.five_chan import five_chan_scraper
@@ -70,7 +71,7 @@ def build_s1_link_replacement(thread_id):
 #     links = [f'[[{num}]](https://{sever}/test/read.cgi/{board}/{thread_id}/{num})' for num in numbers]
 #     return ', '.join(links)
 
-def handle_url(url):
+def handle_url(url, use_asagi_fallback=False):
 
     # 4chan的URL匹配
     match_4chan = re.match(r'https?://boards\.4chan\.org/(\w+)/thread/(\d+)', url)
@@ -80,7 +81,7 @@ def handle_url(url):
         placeholder = st.empty()  # 创建一个空的占位符
         placeholder.text(f"已识别到4chan{board}板块帖子，串ID: {thread_id}")  # 显示临时消息
         params = {"thread_id":thread_id, "board":board}
-        return four_chan_scrape(thread_id,board), prompts["4chan"], '4chan', params
+        return four_chan_scrape(thread_id, board, use_asagi_fallback), prompts["4chan"], '4chan', params
 
     # Stage1st的URL匹配
     match_s1 = re.match(r'https?://(?:www\.|bbs\.)?(?:saraba1st\.com|stage1st\.com)/2b/thread-(\d+)-\d+-\d+\.html', url)
@@ -115,7 +116,7 @@ def handle_url(url):
     st.write("未匹配到正确帖子链接.")
 
 st.title("TL;DR——你的生命很宝贵")
-st.write("当前版本 v0.1.8 更新日期：2025年9月25日")
+st.write("当前版本 v0.1.9 更新日期：2025年9月25日")
 
 st.subheader("帖子链接输入")
 st.markdown(
@@ -148,6 +149,28 @@ for idx in range(url_count):
     if idx == url_count - 1:
         if cols[1].button("➕", key=f"add_url_input_{idx}", use_container_width=True, help="新增一个帖子链接输入框"):
             st.session_state.url_inputs.append("")
+    # 4chan专用：为4chan线程链接提供“往前追踪几个帖子”隐藏选项
+    match_4chan = re.match(r'https?://boards\.4chan\.org/(\w+)/thread/(\d+)', st.session_state.url_inputs[idx])
+    if match_4chan:
+        board_candidate = match_4chan.group(1)
+        with st.expander("4chan 选项", expanded=False):
+            track_key = f"follow_prev_count_{idx}"
+            default_val = st.session_state.get(track_key, 0)
+            st.session_state[track_key] = st.number_input(
+                "往前追踪几个帖子",
+                min_value=0,
+                max_value=10,
+                value=int(default_val),
+                step=1,
+                key=track_key,
+                help="沿OP中的 Previous 链接向前查找旧串"
+            )
+
+colA, colB = st.columns([1, 1])
+with colA:
+    use_asagi_fallback = st.checkbox("4chan失败时使用Asagi存档", value=True, help="当原始4chan接口返回404或失败时，自动切换到存档站")
+with colB:
+    pass
 
 if st.button("开始分析"):
     targets = [u.strip() for u in st.session_state.url_inputs if u.strip()]
@@ -155,7 +178,28 @@ if st.button("开始分析"):
         st.warning("请至少输入一个有效链接。")
         st.session_state.urls_to_process = []
     else:
-        st.session_state.urls_to_process = targets
+        # 扩展：对4chan链接根据选项追溯前序串
+        expanded = []
+        for idx, u in enumerate(targets):
+            expanded.append(u)
+            m = re.match(r'https?://boards\.4chan\.org/(\w+)/thread/(\d+)', u)
+            if m:
+                board = m.group(1)
+                tid = m.group(2)
+                follow_count = int(st.session_state.get(f"follow_prev_count_{idx}", 0))
+                if follow_count > 0:
+                    prev_list = find_previous_threads(board, tid, max_steps=follow_count, use_asagi_fallback=use_asagi_fallback)
+                    # 规范化为标准URL，新在前旧在后
+                    for ptid in prev_list:
+                        expanded.append(f"https://boards.4chan.org/{board}/thread/{ptid}")
+        # 去重并保持顺序
+        seen = set()
+        ordered = []
+        for u in expanded:
+            if u not in seen:
+                seen.add(u)
+                ordered.append(u)
+        st.session_state.urls_to_process = ordered
 
 model_options = {
     "gemini-2.5-pro": "Gemini 2.5 Pro",
@@ -167,7 +211,7 @@ st.caption(f"当前使用模型：{model_options.get(model_choice, model_choice)
 aggregated_segments = []
 failed_urls = []
 for idx, url in enumerate(st.session_state.urls_to_process, start=1):
-    result = handle_url(url)
+    result = handle_url(url, use_asagi_fallback=use_asagi_fallback)
     if not result:
         failed_urls.append((url, "未匹配到正确帖子链接"))
         continue
