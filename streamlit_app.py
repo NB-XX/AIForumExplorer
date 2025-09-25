@@ -50,10 +50,15 @@ def generate_content_with_context(initial_prompt, model_choice, max_attempts=3):
     return "被屏蔽太多次，完蛋了", True
 
 
-def s1_link_replacement(match):
-    numbers = match.group(1).split(',')
-    links = [f'[[{num}]](https://bbs.saraba1st.com/2b/forum.php?mod=redirect&ptid={thread_id}&authorid=0&postno={num})' for num in numbers]
-    return ', '.join(links)
+def build_s1_link_replacement(thread_id):
+    def _replace(match):
+        numbers = match.group(1).split(',')
+        links = [
+            f'[[{num}]](https://bbs.saraba1st.com/2b/forum.php?mod=redirect&ptid={thread_id}&authorid=0&postno={num})'
+            for num in numbers
+        ]
+        return ', '.join(links)
+    return _replace
 
 # def nga_link_replacement(match):
 #     numbers = match.group(1).split(',')
@@ -110,22 +115,38 @@ def handle_url(url):
     st.write("未匹配到正确帖子链接.")
 
 st.title("TL;DR——你的生命很宝贵")
-st.write("当前版本 v0.1.7 更新日期：2025年9月25日")
+st.write("当前版本 v0.1.8 更新日期：2025年9月25日")
 
 st.subheader("帖子链接输入")
+st.markdown(
+    """
+    <style>
+    /* 调整按钮高度以接近输入框 */
+    div.stButton > button {
+        height: 38px;
+        padding: 0 0.6rem;
+        margin-top: 0px;
+        line-height: 38px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 url_count = len(st.session_state.url_inputs)
 for idx in range(url_count):
-    cols = st.columns([9, 1])
+    cols = st.columns([10, 1])
     input_key = f"url_input_{idx}"
     if input_key not in st.session_state:
         st.session_state[input_key] = st.session_state.url_inputs[idx]
     st.session_state.url_inputs[idx] = cols[0].text_input(
-        f"帖子链接 {idx + 1}",
-        key=input_key
+        "帖子链接",
+        key=input_key,
+        placeholder=f"帖子链接 {idx + 1}",
+        label_visibility="collapsed",
     )
     if idx == url_count - 1:
-        if cols[1].button("➕", key=f"add_url_input_{idx}", use_container_width=True):
+        if cols[1].button("➕", key=f"add_url_input_{idx}", use_container_width=True, help="新增一个帖子链接输入框"):
             st.session_state.url_inputs.append("")
 
 if st.button("开始分析"):
@@ -180,9 +201,12 @@ if aggregated_segments and model_choice:
         st.error(response_text)
     else:
         if not blocked:
-            if any(seg["parser"] == "s1" for seg in aggregated_segments):
+            # 若仅存在一个S1来源且拥有明确thread_id，按该ID替换引用链接
+            s1_segments = [seg for seg in aggregated_segments if seg["parser"] == "s1"]
+            if len(s1_segments) == 1:
+                s1_tid = s1_segments[0]["params"]["thread_id"]
                 pattern = r'\[(\d+(?:,\d+)*)\]'
-                formatted_text = re.sub(pattern, s1_link_replacement, response_text)
+                formatted_text = re.sub(pattern, build_s1_link_replacement(s1_tid), response_text)
                 st.markdown(formatted_text)
             else:
                 st.write(response_text)
