@@ -72,6 +72,19 @@ def build_s1_link_replacement(thread_id):
         return ', '.join(links)
     return _replace
 
+def build_4chan_no_link_replacement(board):
+    def _replace(match):
+        num = match.group(1)
+        return f"No:[{num}](https://archive.palanq.win/{board}/post/{num}/)"
+    return _replace
+
+# 如需支持 >>123456 的引链，也可启用此替换
+def build_4chan_quote_link_replacement(board):
+    def _replace(match):
+        num = match.group(1)
+        return f">>[{num}](https://archive.palanq.win/{board}/post/{num}/)"
+    return _replace
+
 # def nga_link_replacement(match):
 #     numbers = match.group(1).split(',')
 #     links = [f'[[{num}]](https://bbs.nga.cn/read.php?pid={thread_id}&opt={num})' for num in numbers]
@@ -262,11 +275,28 @@ if aggregated_segments and model_choice:
         st.error(response_text)
     else:
         # 正常成功路径
+        # 1) S1链接替换（仅当唯一S1来源）
         s1_segments = [seg for seg in aggregated_segments if seg["parser"] == "s1"]
+        formatted_text = response_text
         if len(s1_segments) == 1:
             s1_tid = s1_segments[0]["params"]["thread_id"]
-            pattern = r'\[(\d+(?:,\d+)*)\]'
-            formatted_text = re.sub(pattern, build_s1_link_replacement(s1_tid), response_text)
-            st.markdown(formatted_text)
-        else:
-            st.write(response_text)
+            pattern_s1 = r'\[(\d+(?:,\d+)*)\]'
+            formatted_text = re.sub(pattern_s1, build_s1_link_replacement(s1_tid), formatted_text)
+
+        # 2) 4chan编号与引用替换：按“第一个输入串”的板块判定
+        board = None
+        if st.session_state.get("urls_to_process"):
+            first_url = st.session_state.urls_to_process[0]
+            m_board = re.match(r'https?://boards\.4chan\.org/(\w+)/', first_url) or \
+                      re.match(r'https?://[^/]+/(\w+)/', first_url)
+            if m_board:
+                board = m_board.group(1)
+        if board:
+            # No:123456 或 No: 123456 → 加链接
+            pattern_no = r'No:\s*(\d+)'
+            formatted_text = re.sub(pattern_no, build_4chan_no_link_replacement(board), formatted_text)
+            # >>123456 → 加链接
+            pattern_quote = r'>>([0-9]{3,})'
+            formatted_text = re.sub(pattern_quote, build_4chan_quote_link_replacement(board), formatted_text)
+
+        st.markdown(formatted_text)
