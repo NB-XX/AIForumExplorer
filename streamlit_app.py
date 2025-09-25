@@ -8,6 +8,13 @@ from lib.five_chan import five_chan_scraper
 import re
 import json
 
+if "url_inputs" not in st.session_state:
+    st.session_state.url_inputs = [""]
+if "urls_to_process" not in st.session_state:
+    st.session_state.urls_to_process = []
+if "model_choice" not in st.session_state:
+    st.session_state.model_choice = "gemini-2.5-pro"
+
 # 加载prompts.json文件
 with open("prompts.json", "r") as file:
     prompts = json.load(file)
@@ -58,7 +65,7 @@ def s1_link_replacement(match):
 #     links = [f'[[{num}]](https://{sever}/test/read.cgi/{board}/{thread_id}/{num})' for num in numbers]
 #     return ', '.join(links)
 
-def handle_url(url,date_filter):
+def handle_url(url):
 
     # 4chan的URL匹配
     match_4chan = re.match(r'https?://boards\.4chan\.org/(\w+)/thread/(\d+)', url)
@@ -86,7 +93,7 @@ def handle_url(url,date_filter):
         placeholder = st.empty()  # 创建一个空的占位符
         placeholder.text(f"已识别到NGA帖子，帖子ID: {thread_id}")  # 显示临时消息
         params = {"thread_id":thread_id}
-        return nga_scraper(thread_id,date_filter), prompts["NGA"],'nga', params
+        return nga_scraper(thread_id), prompts["NGA"],'nga', params
 
     # 5ch的URL匹配
     match = re.match(r'https?://([^/]+)/test/read\.cgi/([^/]+)/(\d+)/?', url)
@@ -103,78 +110,63 @@ def handle_url(url,date_filter):
     st.write("未匹配到正确帖子链接.")
 
 st.title("TL;DR——你的生命很宝贵")
-st.write("当前版本 v0.1.6 更新日期：2025年9月3日")
+st.write("当前版本 v0.1.7 更新日期：2025年9月25日")
 
-url = st.text_input(r"请输入4Chan\Stage1st\NGA\5ch类帖子链接:", key="url_input")
+st.subheader("帖子链接输入")
 
-# 列布局
-col1, col2 = st.columns(2)
-
-with col1:
-    # 下拉选择时间筛选选项
-    date_filter_options = {
-        "none": "不过滤",
-        "day": "过去一天",
-        "week": "过去一周",
-        "month": "过去一月"
-    }
-    date_filter = st.selectbox(
-        "选择时间筛选选项：",
-        options=list(date_filter_options.keys()),
-        format_func=lambda x: date_filter_options[x]
+url_count = len(st.session_state.url_inputs)
+for idx in range(url_count):
+    cols = st.columns([8, 1])
+    input_key = f"url_input_{idx}"
+    if input_key not in st.session_state:
+        st.session_state[input_key] = st.session_state.url_inputs[idx]
+    st.session_state.url_inputs[idx] = cols[0].text_input(
+        f"帖子链接 {idx + 1}",
+        key=input_key
     )
+    if idx == url_count - 1:
+        if cols[1].button("+", key=f"add_url_input_{idx}"):
+            st.session_state.url_inputs.append("")
+            st.experimental_rerun()
+    else:
+        cols[1].write("")
 
-with col2:
-    # 分析按钮
-    if st.button("开始分析"):
-        st.session_state['url'] = st.session_state['url_input']
-        st.session_state['date_filter'] = date_filter
+if st.button("开始分析"):
+    targets = [u.strip() for u in st.session_state.url_inputs if u.strip()]
+    if not targets:
+        st.warning("请至少输入一个有效链接。")
+        st.session_state.urls_to_process = []
+    else:
+        st.session_state.urls_to_process = targets
 
-
-# 模型选择
 model_options = {
     "gemini-2.5-pro": "Gemini 2.5 Pro",
     "gemini-2.5-flash": "Gemini 2.5 Flash"
 }
-model_choice = st.selectbox(
-    "请选择模型：",
-    options=list(model_options.keys()),
-    format_func=lambda x: f"{x} ({model_options[x]})"  # 显示选项和描述
-)
+model_choice = st.session_state.model_choice
+st.caption(f"当前使用模型：{model_options.get(model_choice, model_choice)}")
 
-
-if st.button("切换模型"):
-    st.success(f"切换模型成功: {model_choice}")
-
-if url:
-    extracted_content, site_prompt, parser_name, params = handle_url(url,date_filter)
+for idx, url in enumerate(st.session_state.urls_to_process, start=1):
+    st.markdown(f"---\n**帖子 {idx}**：{url}")
+    result = handle_url(url)
+    if not result:
+        continue
+    extracted_content, site_prompt, parser_name, params = result
     if extracted_content and model_choice:
-        placeholder = st.empty()  # 创建一个空的占位符
+        placeholder = st.empty()
         placeholder.text("帖子已拉取完毕，正在等待模型生成...")
         prompt = f"{site_prompt}+{extracted_content}"
         response_text, blocked = generate_content_with_context(prompt, model_choice)
-        placeholder.empty()  # 清除临时消息
+        placeholder.empty()
         if "获取内容失败" in response_text:
             st.error(response_text)
         else:
-            if not blocked: # 这里写的实在是太丑陋了 但是我不知道怎么优雅的处理
+            if not blocked:
                 if parser_name == "s1":
                     thread_id = params["thread_id"]
                     pattern = r'\[(\d+(?:,\d+)*)\]'
                     formatted_text = re.sub(pattern, s1_link_replacement, response_text)
-                    st.markdown(formatted_text)  
-                # if parser_name == "nga":
-                #     thread_id = params["thread_id"]
-                #     board = params["board"]
-                #     pattern = r'\[(\d+(?:,\d+)*)\]'
-                #     formatted_text = re.sub(pattern, nga_link_replacement, response_text)
-                #     st.markdown(formatted_text)
-                # if parser_name == "5ch":
-                #     sever = params["sever"]
-                #     thread_id = params["thread_id"]
-                #     pattern = r'\[(\d+(?:,\d+)*)\]'
-                #     formatted_text = re.sub(pattern, five_chan_link_replacement, response_text)
-                #     st.markdown(formatted_text)
+                    st.markdown(formatted_text)
                 else:
                     st.write(response_text)
             else:
