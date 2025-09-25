@@ -21,34 +21,45 @@ with open("prompts.json", "r") as file:
     prompts = json.load(file)
 
 def generate_content_with_context(initial_prompt, model_choice, max_attempts=3):
-    genai.configure(api_key=st.secrets["api_key"])
-    model = genai.GenerativeModel(model_choice)
-    attempts = 0
-    messages = [{'role': 'user', 'parts': [initial_prompt]}]
-    st.write(f"已传入{len(initial_prompt) }字")
-    while attempts < max_attempts:
-        response = model.generate_content(messages, safety_settings={
-            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-        },generation_config=genai.types.GenerationConfig(temperature=1.0))
-
-        if 'block_reason' in str(response.prompt_feedback):
-            st.write(f"被屏蔽{attempts + 1}次: 正常尝试重新输出。{response.prompt_feedback}")
-            messages.append({'role':'model','parts':["请指示我"]})
-            messages.append({'role': 'user', 'parts': ["继续生成"]})
-            attempts += 1
-        else:
+    try:
+        genai.configure(api_key=st.secrets["api_key"])
+        model = genai.GenerativeModel(model_choice)
+        attempts = 0
+        messages = [{'role': 'user', 'parts': [initial_prompt]}]
+        st.write(f"已传入{len(initial_prompt) }字")
+        while attempts < max_attempts:
             try:
-                if response.text:  # 直接检查响应文本是否存在
-                    return response.text, False
-                else:
-                    return "没有生成内容。", True
-            except AttributeError as e:
-                return f"响应解析失败：{e}", True
+                response = model.generate_content(
+                    messages,
+                    safety_settings={
+                        HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+                        HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+                        HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+                        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+                    },
+                    generation_config=genai.types.GenerationConfig(temperature=1.0)
+                )
+            except Exception as api_err:
+                # 将API异常报错直接反馈到前台
+                return f"模型生成失败：{api_err}", True
 
-    return "被屏蔽太多次，完蛋了", True
+            if 'block_reason' in str(response.prompt_feedback):
+                st.write(f"被屏蔽{attempts + 1}次: 正常尝试重新输出。{response.prompt_feedback}")
+                messages.append({'role':'model','parts':["请指示我"]})
+                messages.append({'role': 'user', 'parts': ["继续生成"]})
+                attempts += 1
+            else:
+                try:
+                    if response.text:
+                        return response.text, False
+                    else:
+                        return "没有生成内容。", True
+                except AttributeError as e:
+                    return f"响应解析失败：{e}", True
+        return "被屏蔽太多次，完蛋了", True
+    except Exception as e:
+        # 顶层保护，防止未捕获异常导致页面崩溃
+        return f"模型调用发生未预期异常：{e}", True
 
 
 def build_s1_link_replacement(thread_id):
@@ -118,7 +129,9 @@ def handle_url(url, use_asagi_fallback=False):
 st.title("TL;DR——你的生命很宝贵")
 st.write("当前版本 v0.1.9 更新日期：2025年9月25日")
 
-st.subheader("帖子链接输入")
+st.subheader("输入需要总结的帖子链接")
+st.write("支持的站点：4chan、Stage1st、NGA、5ch、jpnkn")
+
 st.markdown(
     """
     <style>
@@ -244,18 +257,16 @@ if aggregated_segments and model_choice:
     prompt = "\n---\n".join(combined_prompt_parts)
     response_text, blocked = generate_content_with_context(prompt, model_choice)
     placeholder.empty()
-    if "获取内容失败" in response_text:
+    # 无论何种失败/异常字符串，统一以错误展示，避免崩溃
+    if blocked or "失败" in response_text or "异常" in response_text:
         st.error(response_text)
     else:
-        if not blocked:
-            # 若仅存在一个S1来源且拥有明确thread_id，按该ID替换引用链接
-            s1_segments = [seg for seg in aggregated_segments if seg["parser"] == "s1"]
-            if len(s1_segments) == 1:
-                s1_tid = s1_segments[0]["params"]["thread_id"]
-                pattern = r'\[(\d+(?:,\d+)*)\]'
-                formatted_text = re.sub(pattern, build_s1_link_replacement(s1_tid), response_text)
-                st.markdown(formatted_text)
-            else:
-                st.write(response_text)
+        # 正常成功路径
+        s1_segments = [seg for seg in aggregated_segments if seg["parser"] == "s1"]
+        if len(s1_segments) == 1:
+            s1_tid = s1_segments[0]["params"]["thread_id"]
+            pattern = r'\[(\d+(?:,\d+)*)\]'
+            formatted_text = re.sub(pattern, build_s1_link_replacement(s1_tid), response_text)
+            st.markdown(formatted_text)
         else:
             st.write(response_text)

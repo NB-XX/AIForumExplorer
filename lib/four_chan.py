@@ -52,8 +52,11 @@ def _clean_asagi_comment_to_text(comment_html: str) -> (str, list):
     if not comment_html:
         return "", []
     links = []
-    # 提取锚点形式引用
+    # 提取锚点形式引用（本地锚点 #p123）
     for m in re.findall(r'<a[^>]+href=\"#p(\d+)\"[^>]*>[^<]*</a>', comment_html):
+        links.append(m)
+    # 提取 Asagi 存档的 post 链接 https://.../post/123456/
+    for m in re.findall(r'<a[^>]+href=\"https?://[^\"]+/post/(\d+)/\"[^>]*>[^<]*</a>', comment_html):
         links.append(m)
     # 备用：提取 >>123456 形式
     for m in re.findall(r'&gt;&gt;(\d+)', comment_html):
@@ -83,25 +86,40 @@ def download_and_extract_json_asagi(board: str, thread_id: str):
         return []
 
     posts = []
-    raw_posts = []
+    # 典型结构：{ "<tid>": { "op": {...}, "posts": {"<pid>": {...}, ...} } }
     if isinstance(data, dict):
-        if 'posts' in data and isinstance(data['posts'], list):
-            raw_posts = data['posts']
-        elif 'threads' in data and isinstance(data['threads'], list) and data['threads']:
-            # 有些实现可能在 threads[0].posts 下
-            t0 = data['threads'][0]
-            raw_posts = t0.get('posts', []) if isinstance(t0, dict) else []
-
-    for post in raw_posts:
-        post_id = post.get('no') or post.get('num') or post.get('id')
-        comment_html = post.get('comment') or post.get('com') or ''
-        text, links = _clean_asagi_comment_to_text(comment_html)
-        posts.append({
-            'no': post_id,
-            'com': text,
-            'resto': links,
-            'img_ocr': ''
-        })
+        tnode = data.get(str(thread_id))
+        if isinstance(tnode, dict):
+            # 处理 OP
+            op = tnode.get('op')
+            if isinstance(op, dict):
+                post_id = op.get('no') or op.get('num') or op.get('id') or str(thread_id)
+                comment_html = op.get('comment_processed') or op.get('comment') or op.get('comment_sanitized') or ''
+                text, links = _clean_asagi_comment_to_text(comment_html)
+                posts.append({'no': post_id, 'com': text, 'resto': links, 'img_ocr': ''})
+            # 处理回帖
+            posts_map = tnode.get('posts')
+            if isinstance(posts_map, dict):
+                for _, p in posts_map.items():
+                    if not isinstance(p, dict):
+                        continue
+                    post_id = p.get('no') or p.get('num') or p.get('id')
+                    comment_html = p.get('comment_processed') or p.get('comment') or p.get('comment_sanitized') or ''
+                    text, links = _clean_asagi_comment_to_text(comment_html)
+                    posts.append({'no': post_id, 'com': text, 'resto': links, 'img_ocr': ''})
+        else:
+            # 兼容其他实现（列表形式）
+            raw_posts = []
+            if 'posts' in data and isinstance(data['posts'], list):
+                raw_posts = data['posts']
+            elif 'threads' in data and isinstance(data['threads'], list) and data['threads']:
+                t0 = data['threads'][0]
+                raw_posts = t0.get('posts', []) if isinstance(t0, dict) else []
+            for post in raw_posts:
+                post_id = post.get('no') or post.get('num') or post.get('id')
+                comment_html = post.get('comment') or post.get('com') or ''
+                text, links = _clean_asagi_comment_to_text(comment_html)
+                posts.append({'no': post_id, 'com': text, 'resto': links, 'img_ocr': ''})
 
     return posts
 
