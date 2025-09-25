@@ -155,12 +155,12 @@ for idx in range(url_count):
         board_candidate = match_4chan.group(1)
         with st.expander("4chan 选项", expanded=False):
             track_key = f"follow_prev_count_{idx}"
-            default_val = st.session_state.get(track_key, 0)
-            st.session_state[track_key] = st.number_input(
+            default_val = int(st.session_state.get(track_key, 0))
+            st.number_input(
                 "往前追踪几个帖子",
                 min_value=0,
                 max_value=10,
-                value=int(default_val),
+                value=default_val,
                 step=1,
                 key=track_key,
                 help="沿OP中的 Previous 链接向前查找旧串"
@@ -173,14 +173,17 @@ with colB:
     pass
 
 if st.button("开始分析"):
-    targets = [u.strip() for u in st.session_state.url_inputs if u.strip()]
-    if not targets:
+    nonempty = [u.strip() for u in st.session_state.url_inputs if u.strip()]
+    if not nonempty:
         st.warning("请至少输入一个有效链接。")
         st.session_state.urls_to_process = []
     else:
-        # 扩展：对4chan链接根据选项追溯前序串
+        # 扩展：对4chan链接根据选项追溯前序串（索引与原输入框一致，避免错配）
         expanded = []
-        for idx, u in enumerate(targets):
+        for idx, raw_u in enumerate(st.session_state.url_inputs):
+            u = raw_u.strip()
+            if not u:
+                continue
             expanded.append(u)
             m = re.match(r'https?://boards\.4chan\.org/(\w+)/thread/(\d+)', u)
             if m:
