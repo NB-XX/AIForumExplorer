@@ -116,7 +116,7 @@ st.subheader("帖子链接输入")
 
 url_count = len(st.session_state.url_inputs)
 for idx in range(url_count):
-    cols = st.columns([8, 1])
+    cols = st.columns([9, 1])
     input_key = f"url_input_{idx}"
     if input_key not in st.session_state:
         st.session_state[input_key] = st.session_state.url_inputs[idx]
@@ -125,11 +125,8 @@ for idx in range(url_count):
         key=input_key
     )
     if idx == url_count - 1:
-        if cols[1].button("+", key=f"add_url_input_{idx}"):
+        if cols[1].button("➕", key=f"add_url_input_{idx}", use_container_width=True):
             st.session_state.url_inputs.append("")
-            st.experimental_rerun()
-    else:
-        cols[1].write("")
 
 if st.button("开始分析"):
     targets = [u.strip() for u in st.session_state.url_inputs if u.strip()]
@@ -146,28 +143,48 @@ model_options = {
 model_choice = st.session_state.model_choice
 st.caption(f"当前使用模型：{model_options.get(model_choice, model_choice)}")
 
+aggregated_segments = []
+failed_urls = []
 for idx, url in enumerate(st.session_state.urls_to_process, start=1):
-    st.markdown(f"---\n**帖子 {idx}**：{url}")
     result = handle_url(url)
     if not result:
+        failed_urls.append((url, "未匹配到正确帖子链接"))
         continue
     extracted_content, site_prompt, parser_name, params = result
-    if extracted_content and model_choice:
-        placeholder = st.empty()
-        placeholder.text("帖子已拉取完毕，正在等待模型生成...")
-        prompt = f"{site_prompt}+{extracted_content}"
-        response_text, blocked = generate_content_with_context(prompt, model_choice)
-        placeholder.empty()
-        if "获取内容失败" in response_text:
-            st.error(response_text)
-        else:
-            if not blocked:
-                if parser_name == "s1":
-                    thread_id = params["thread_id"]
-                    pattern = r'\[(\d+(?:,\d+)*)\]'
-                    formatted_text = re.sub(pattern, s1_link_replacement, response_text)
-                    st.markdown(formatted_text)
-                else:
-                    st.write(response_text)
+    if not extracted_content:
+        failed_urls.append((url, "获取内容失败"))
+        continue
+    aggregated_segments.append({
+        "url": url,
+        "prompt": site_prompt,
+        "content": extracted_content,
+        "parser": parser_name,
+        "params": params
+    })
+
+if failed_urls:
+    st.warning("以下链接处理失败：" + "；".join(f"{u}（{reason}）" for u, reason in failed_urls))
+
+if aggregated_segments and model_choice:
+    placeholder = st.empty()
+    placeholder.text("所有帖子已拉取完毕，正在等待模型生成...")
+    combined_prompt_parts = []
+    for segment in aggregated_segments:
+        combined_prompt_parts.append(
+            f"来源：{segment['url']}\n指引：{segment['prompt']}\n内容：{segment['content']}"
+        )
+    prompt = "\n---\n".join(combined_prompt_parts)
+    response_text, blocked = generate_content_with_context(prompt, model_choice)
+    placeholder.empty()
+    if "获取内容失败" in response_text:
+        st.error(response_text)
+    else:
+        if not blocked:
+            if any(seg["parser"] == "s1" for seg in aggregated_segments):
+                pattern = r'\[(\d+(?:,\d+)*)\]'
+                formatted_text = re.sub(pattern, s1_link_replacement, response_text)
+                st.markdown(formatted_text)
             else:
                 st.write(response_text)
+        else:
+            st.write(response_text)
