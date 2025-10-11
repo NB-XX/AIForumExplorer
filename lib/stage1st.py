@@ -57,7 +57,7 @@ def download_json(url, params):
 
 def fetch_thread_info(thread_id, sid):
     """获取指定帖子的基本信息。"""
-    url = "https://app.saraba1st.com:443/2b/api/app/thread"
+    url = "https://app.stage1st.com/2b/api/app/thread"
     params = {'sid': sid, 'tid': thread_id}
     return download_json(url, params)
 
