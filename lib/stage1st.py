@@ -8,12 +8,12 @@ import pytz
 def convert_html_to_text(html_content):
     """将HTML内容转换为纯文本，移除或转换一些特定格式。"""
     text = html.unescape(html_content)
-    text = re.sub('本帖最后由 .*? 于 \d{4}-\d{1,2}-\d{1,2} \d{1,2}:\d{2} 编辑', '', text)
+    text = re.sub(r'本帖最后由 .*? 于 \d{4}-\d{1,2}-\d{1,2} \d{1,2}:\d{2} 编辑', '', text)
     text = re.sub('—— 来自 .*$', '', text, flags=re.MULTILINE)
     text = re.sub('----发送自 .*$', '', text, flags=re.MULTILINE)
     text = re.sub('<[^<]+?>', '', text)
     text = text.replace("<br>", "\n").replace("<br />", "\n")
-    text = re.sub('\n\s*\n', '\n', text)
+    text = re.sub(r'\n\s*\n', '\n', text)
     return text
 
 def extract_post_data(post, pid_to_position):
@@ -28,7 +28,7 @@ def extract_post_data(post, pid_to_position):
     resto = [str(pid_to_position[int(pid)]) for pid in pids if int(pid) in pid_to_position]
     
     # 移除包含引用pid的<blockquote>
-    message = re.sub(f'<div class="quote"><blockquote>.*?goto=findpost&pid=(\d+)&.*?</blockquote></div>', '', message, flags=re.DOTALL)
+    message = re.sub(r'<div class="quote"><blockquote>.*?goto=findpost&pid=(\d+)&.*?</blockquote></div>', '', message, flags=re.DOTALL)
     
     com = convert_html_to_text(message)
     return {"no": post_no, "author": author, "resto": resto, "com": com, "dateline": dateline}

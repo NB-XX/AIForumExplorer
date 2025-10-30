@@ -8,6 +8,7 @@ from lib.nga import nga_scraper
 from lib.five_chan import five_chan_scraper
 import re
 import json
+from datetime import datetime
 
 if "url_inputs" not in st.session_state:
     st.session_state.url_inputs = [""]
@@ -15,50 +16,102 @@ if "urls_to_process" not in st.session_state:
     st.session_state.urls_to_process = []
 if "model_choice" not in st.session_state:
     st.session_state.model_choice = "gemini-2.5-pro"
+if "use_third_party" not in st.session_state:
+    st.session_state.use_third_party = False
 
 # 加载prompts.json文件
-with open("prompts.json", "r") as file:
+with open("prompts.json", "r", encoding="utf-8") as file:
     prompts = json.load(file)
 
-def generate_content_with_context(initial_prompt, model_choice, max_attempts=3):
+def generate_content_with_context(initial_prompt, model_choice, use_third_party=False, max_attempts=3):
     try:
-        genai.configure(api_key=st.secrets["api_key"])
-        model = genai.GenerativeModel(model_choice)
-        attempts = 0
-        messages = [{'role': 'user', 'parts': [initial_prompt]}]
-        st.write(f"已传入{len(initial_prompt) }字")
-        while attempts < max_attempts:
+        st.write(f"已传入{len(initial_prompt)}字")
+        
+        if use_third_party:
+            # 使用第三方 New API (OpenAI 格式)
             try:
-                response = model.generate_content(
-                    messages,
-                    safety_settings={
-                        HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-                        HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-                        HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-                        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-                    },
-                    generation_config=genai.types.GenerationConfig(temperature=1.0)
-                )
-            except Exception as api_err:
-                # 将API异常报错直接反馈到前台
-                return f"模型生成失败：{api_err}", True
-
-            if 'block_reason' in str(response.prompt_feedback):
-                st.write(f"被屏蔽{attempts + 1}次: 正常尝试重新输出。{response.prompt_feedback}")
-                messages.append({'role':'model','parts':["请指示我"]})
-                messages.append({'role': 'user', 'parts': ["继续生成"]})
-                attempts += 1
-            else:
-                try:
-                    if response.text:
-                        return response.text, False
+                import requests
+                
+                api_key = st.secrets["third_party_api_key"]
+                base_url = "https://sdwfger.edu.kg"
+                model = "gemini-2.5-pro(不易断流)"
+                
+                url = f"{base_url}/v1/chat/completions"
+                
+                payload = {
+                    "model": model,
+                    "messages": [
+                        {"role": "user", "content": initial_prompt}
+                    ],
+                    "stream": False,
+                    "temperature": 1.0
+                }
+                
+                headers = {
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {api_key}"
+                }
+                
+                response = requests.post(url, json=payload, headers=headers, timeout=180)
+                response.raise_for_status()
+                
+                result = response.json()
+                
+                # 解析 OpenAI 格式响应
+                if "choices" in result and len(result["choices"]) > 0:
+                    choice = result["choices"][0]
+                    if "message" in choice and "content" in choice["message"]:
+                        text = choice["message"]["content"]
+                        if text:
+                            return text, False
+                        else:
+                            return "没有生成内容。", True
                     else:
-                        return "没有生成内容。", True
-                except AttributeError as e:
-                    return f"响应解析失败：{e}", True
-        return "被屏蔽太多次，完蛋了", True
+                        return f"响应格式异常：{result}", True
+                else:
+                    return f"API 返回异常：{result}", True
+                    
+            except requests.exceptions.RequestException as req_err:
+                return f"第三方 API 请求失败：{req_err}", True
+            except Exception as api_err:
+                return f"第三方模型生成失败：{api_err}", True
+        else:
+            # 使用官方 Gemini API
+            genai.configure(api_key=st.secrets["api_key"])
+            model = genai.GenerativeModel(model_choice)
+            attempts = 0
+            messages = [{'role': 'user', 'parts': [initial_prompt]}]
+            
+            while attempts < max_attempts:
+                try:
+                    response = model.generate_content(
+                        messages,
+                        safety_settings={
+                            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+                            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+                            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+                            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+                        },
+                        generation_config=genai.types.GenerationConfig(temperature=1.0)
+                    )
+                except Exception as api_err:
+                    return f"模型生成失败：{api_err}", True
+
+                if 'block_reason' in str(response.prompt_feedback):
+                    st.write(f"被屏蔽{attempts + 1}次: 正常尝试重新输出。{response.prompt_feedback}")
+                    messages.append({'role':'model','parts':["请指示我"]})
+                    messages.append({'role': 'user', 'parts': ["继续生成"]})
+                    attempts += 1
+                else:
+                    try:
+                        if response.text:
+                            return response.text, False
+                        else:
+                            return "没有生成内容。", True
+                    except AttributeError as e:
+                        return f"响应解析失败：{e}", True
+            return "被屏蔽太多次，完蛋了", True
     except Exception as e:
-        # 顶层保护，防止未捕获异常导致页面崩溃
         return f"模型调用发生未预期异常：{e}", True
 
 
@@ -140,7 +193,7 @@ def handle_url(url, use_asagi_fallback=False):
     st.write("未匹配到正确帖子链接.")
 
 st.title("TL;DR——你的生命很宝贵")
-st.write("当前版本 v0.1.9 更新日期：2025年9月25日")
+st.write("当前版本 v0.2.0 更新日期：2025年10月29日")
 
 st.subheader("输入需要总结的帖子链接")
 st.write("支持的站点：4chan、Stage1st、NGA、5ch、jpnkn")
@@ -235,7 +288,19 @@ model_options = {
     "gemini-2.5-flash": "Gemini 2.5 Flash"
 }
 model_choice = st.session_state.model_choice
-st.caption(f"当前使用模型：{model_options.get(model_choice, model_choice)}")
+
+# API 来源切换
+use_third_party = st.toggle(
+    "使用第三方 API",
+    value=st.session_state.use_third_party,
+    help="切换到第三方 OpenAI 兼容接口 (gemini-2.5-pro)"
+)
+st.session_state.use_third_party = use_third_party
+
+if use_third_party:
+    st.caption("当前使用：第三方 API - gemini-2.5-pro(不易断流)")
+else:
+    st.caption(f"当前使用：官方 API - {model_options.get(model_choice, model_choice)}")
 
 aggregated_segments = []
 failed_urls = []
@@ -268,7 +333,7 @@ if aggregated_segments and model_choice:
             f"来源：{segment['url']}\n指引：{segment['prompt']}\n内容：{segment['content']}"
         )
     prompt = "\n---\n".join(combined_prompt_parts)
-    response_text, blocked = generate_content_with_context(prompt, model_choice)
+    response_text, blocked = generate_content_with_context(prompt, model_choice, use_third_party)
     placeholder.empty()
     # 仅当 blocked=True（模型调用失败/被屏蔽/解析异常）时展示错误
     if blocked:
@@ -300,3 +365,193 @@ if aggregated_segments and model_choice:
             formatted_text = re.sub(pattern_quote, build_4chan_quote_link_replacement(board), formatted_text)
 
         st.markdown(formatted_text)
+        
+        # 导出为图片功能
+        st.divider()
+        
+        # 生成 HTML 用于转换为图片
+        html_for_image = f"""<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {{
+            font-family: "Microsoft YaHei", "Segoe UI", Arial, sans-serif;
+            line-height: 1.8;
+            max-width: 1200px;
+            margin: 0;
+            padding: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }}
+        .container {{
+            background-color: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }}
+        h1 {{
+            color: #2c3e50;
+            font-size: 32px;
+            margin-bottom: 10px;
+            border-bottom: 4px solid #667eea;
+            padding-bottom: 15px;
+        }}
+        .meta {{
+            color: #7f8c8d;
+            font-size: 14px;
+            margin-bottom: 25px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }}
+        .meta p {{
+            margin: 5px 0;
+        }}
+        h2 {{
+            color: #34495e;
+            font-size: 24px;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            border-left: 5px solid #667eea;
+            padding-left: 15px;
+        }}
+        .url-list {{
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 5px solid #3498db;
+        }}
+        .url-list ol {{
+            margin: 0;
+            padding-left: 25px;
+        }}
+        .url-list li {{
+            margin: 8px 0;
+            color: #2c3e50;
+            word-break: break-all;
+        }}
+        hr {{
+            border: none;
+            border-top: 2px solid #ecf0f1;
+            margin: 30px 0;
+        }}
+        .result {{
+            color: #2c3e50;
+            font-size: 16px;
+            line-height: 1.9;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }}
+        .footer {{
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #ecf0f1;
+            text-align: center;
+            color: #95a5a6;
+            font-size: 12px;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 TL;DR 分析结果</h1>
+        <div class="meta">
+            <p><strong>⏰ 生成时间:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+            <p><strong>🤖 使用模型:</strong> {'第三方 API - gemini-2.5-pro(不易断流)' if use_third_party else f'官方 API - {model_options.get(model_choice, model_choice)}'}</p>
+        </div>
+        
+        <h2>📌 分析的帖子链接</h2>
+        <div class="url-list">
+            <ol>
+"""
+        for url in st.session_state.urls_to_process:
+            html_for_image += f'                <li>{url}</li>\n'
+        
+        # 处理 Markdown 格式的文本，转换为 HTML
+        result_html = formatted_text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+        result_html = result_html.replace('\n', '<br>')
+        
+        html_for_image += f"""            </ol>
+        </div>
+        
+        <hr>
+        
+        <h2>📝 分析结果</h2>
+        <div class="result">
+{result_html}
+        </div>
+        
+        <div class="footer">
+            Generated by TL;DR - 你的生命很宝贵
+        </div>
+    </div>
+</body>
+</html>"""
+        
+        if st.button("📸 生成图片", use_container_width=True, type="primary"):
+            try:
+                from io import BytesIO
+                import base64
+                
+                # 使用 HTML 到图片的 JavaScript 方法
+                st.info("正在生成图片，请稍候...")
+                
+                # 创建一个可下载的 HTML 文件，用户可以在浏览器中打开后截图
+                # 或者使用在线工具转换
+                components_html = f"""
+                <div style="display: none;">
+                    <div id="content-to-capture">
+                        {html_for_image}
+                    </div>
+                </div>
+                <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+                <script>
+                    function captureAndDownload() {{
+                        const element = document.getElementById('content-to-capture');
+                        element.style.display = 'block';
+                        html2canvas(element, {{
+                            scale: 2,
+                            backgroundColor: '#ffffff',
+                            logging: false,
+                            width: 1200,
+                            windowWidth: 1200
+                        }}).then(canvas => {{
+                            element.style.display = 'none';
+                            canvas.toBlob(blob => {{
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = 'tldr_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png';
+                                a.click();
+                                URL.revokeObjectURL(url);
+                            }});
+                        }});
+                    }}
+                    // 自动触发
+                    setTimeout(captureAndDownload, 1000);
+                </script>
+                """
+                
+                st.components.v1.html(components_html, height=0)
+                st.success("✅ 图片生成完成！请检查浏览器下载文件夹。")
+                
+                # 同时提供 HTML 下载选项
+                st.download_button(
+                    label="📥 或下载 HTML（可在浏览器中打开后截图）",
+                    data=html_for_image,
+                    file_name=f"tldr_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html",
+                    mime="text/html",
+                    use_container_width=True
+                )
+                
+            except Exception as e:
+                st.error(f"生成图片失败：{e}")
+                st.info("💡 备用方案：请下载 HTML 文件，在浏览器中打开后使用浏览器的截图功能或打印为 PDF。")
+                st.download_button(
+                    label="📥 下载 HTML 文件",
+                    data=html_for_image,
+                    file_name=f"tldr_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html",
+                    mime="text/html",
+                    use_container_width=True
+                )
