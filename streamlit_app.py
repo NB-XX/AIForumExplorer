@@ -15,7 +15,7 @@ if "url_inputs" not in st.session_state:
 if "urls_to_process" not in st.session_state:
     st.session_state.urls_to_process = []
 if "model_choice" not in st.session_state:
-    st.session_state.model_choice = "gemini-2.5-pro"
+    st.session_state.model_choice = "gemini-3-pro-preview"
 if "use_third_party" not in st.session_state:
     st.session_state.use_third_party = False
 
@@ -284,7 +284,7 @@ if st.button("开始分析"):
         st.session_state.urls_to_process = ordered
 
 model_options = {
-    "gemini-2.5-pro": "Gemini 2.5 Pro",
+    "gemini-3-pro-preview": "gemini-3-pro-preview",
     "gemini-2.5-flash": "Gemini 2.5 Flash"
 }
 model_choice = st.session_state.model_choice
