@@ -33,8 +33,8 @@ def generate_content_with_context(initial_prompt, model_choice, use_third_party=
                 import requests
                 
                 api_key = st.secrets["third_party_api_key"]
-                base_url = "https://sdwfger.edu.kg"
-                model = "gemini-2.5-pro(不易断流)"
+                base_url = "https://ai.xiangcao.de"
+                model = "gemini-2.5-pro"
                 
                 url = f"{base_url}/v1/chat/completions"
                 
